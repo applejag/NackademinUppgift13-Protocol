@@ -13,6 +13,9 @@ namespace BattleshipProtocol.Game
     {
         protected internal bool[,] _shots = new bool[10, 10];
 
+        /// <summary>
+        /// The collection of ships in this board. Is garanteed to be only one of each <see cref="ShipType"/>.
+        /// </summary>
         [NotNull, ItemNotNull]
         public IReadOnlyCollection<Ship> Ships { get; }
 
