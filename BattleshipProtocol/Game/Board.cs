@@ -75,23 +75,6 @@ namespace BattleshipProtocol.Game
         }
 
         /// <summary>
-        /// Get the ship that is shot at position. Returns null if square is not hit at that position.
-        /// </summary>
-        /// <param name="x">X position to check. 0 is far west (A). 9 is far east (J).</param>
-        /// <param name="y">Y position to check. 0 is far north (1). 9 is far south (10).</param>
-        [CanBeNull, Pure]
-        public Ship GetShipShotAt(int x, int y)
-        {
-            if (x < 0 || x > 9)
-                throw new ArgumentOutOfRangeException(nameof(x), "Valid position ranges from 0-9.");
-
-            if (y < 0 || y > 9)
-                throw new ArgumentOutOfRangeException(nameof(y), "Valid position ranges from 0-9.");
-
-            return IsShotAt(x, y) ? GetShipAt(x, y) : null;
-        }
-
-        /// <summary>
         /// Has this position been shot at?
         /// </summary>
         /// <param name="x">X position to check. 0 is far west (A). 9 is far east (J).</param>
