@@ -12,22 +12,17 @@ namespace BattleshipProtocol.Protocol.Commands
         string Command { get; }
 
         /// <summary>
-        /// The additional optional argument sent with the command. Leave empty or null to omit.
-        /// </summary>
-        [CanBeNull]
-        string Message { get; set; }
-
-        /// <summary>
         /// Handles a received command from the other client.
         /// </summary>
-        /// <param name="context"></param>
-        void HandleCommand(BattleGame context);
+        /// <param name="context">The game context.</param>
+        /// <param name="argument">The argument received with the command.</param>
+        void OnCommand([NotNull] BattleGame context, [CanBeNull] string argument);
 
         /// <summary>
         /// Handles a received response from the other client.
         /// </summary>
         /// <param name="context">The game context.</param>
         /// <param name="response">The response.</param>
-        void HandleResponse(BattleGame context, Response response);
+        void OnResponse([NotNull] BattleGame context, Response response);
     }
 }

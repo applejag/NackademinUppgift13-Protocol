@@ -26,7 +26,7 @@ namespace BattleshipProtocol.Protocol
         [NotNull, ItemNotNull]
         public IReadOnlyCollection<ICommand> RegisteredCommands => _registeredCommands;
 
-        public event EventHandler<ICommand> CommandReceived;
+        public event EventHandler<ReceivedCommand> CommandReceived;
         public event EventHandler<Response> ResponseReceived;
         public event EventHandler StreamClosed;
 
@@ -107,7 +107,7 @@ namespace BattleshipProtocol.Protocol
                 if (match.Success)
                 {
                     string commandCode = match.Groups[1].Value;
-                    ICommand command = GetCommand(commandCode, match.Groups[2].Value);
+                    ICommand command = GetCommand(commandCode);
 
                     // Validate
                     if (command is null)
@@ -121,7 +121,13 @@ namespace BattleshipProtocol.Protocol
                     }
 
                     // Register received command
-                    OnCommandReceived(command);
+                    string argument = match.Groups[2].Value;
+
+                    OnCommandReceived(new ReceivedCommand
+                    {
+                        Command = command,
+                        Argument = argument
+                    });
                     return;
                 }
 
@@ -147,7 +153,7 @@ namespace BattleshipProtocol.Protocol
             }
         }
 
-        public void Send([NotNull] ICommand command)
+        public void Send([NotNull] ICommand command, [CanBeNull] string argument)
         {
             if (command is null)
                 throw new ArgumentNullException(nameof(command));
@@ -157,16 +163,16 @@ namespace BattleshipProtocol.Protocol
 
             lock (_writer)
             {
-                _writer.WriteLine(string.IsNullOrEmpty(command.Message)
+                _writer.WriteLine(string.IsNullOrEmpty(argument)
                     ? command.Command
-                    : $"{command.Command} {command.Message}");
+                    : $"{command.Command} {argument}");
 
                 _writer.Flush();
             }
         }
 
         [Pure, CanBeNull]
-        public ICommand GetCommand(string command, string argument)
+        public ICommand GetCommand([NotNull] string command)
         {
             return _registeredCommands.FirstOrDefault(cmd =>
                 cmd.Command.Equals(command, StringComparison.InvariantCultureIgnoreCase));
@@ -181,7 +187,7 @@ namespace BattleshipProtocol.Protocol
             _writer.Dispose();
         }
 
-        protected virtual void OnCommandReceived([NotNull] ICommand e)
+        protected virtual void OnCommandReceived(ReceivedCommand e)
         {
             CommandReceived?.Invoke(this, e);
         }
