@@ -25,7 +25,8 @@ namespace BattleshipProtocol.Protocol
 
         public bool ConnectionOpen { get; private set; }
 
-        [NotNull] [ItemNotNull]
+        [NotNull]
+        [ItemNotNull]
         private readonly List<ICommand> _registeredCommands = new List<ICommand>();
 
         [NotNull, ItemNotNull]
@@ -59,16 +60,80 @@ namespace BattleshipProtocol.Protocol
 
         #region Readers and writers of protocol types
 
+        private async Task<bool> TryHandleResponseAsync(string value)
+        {
+            // Check if response code
+            Match match = _responseRegex.Match(value);
+
+            if (!match.Success)
+                return false;
+
+            var code = (ResponseCode)short.Parse(match.Groups[1].Value);
+
+            // Validate
+            if (!Enum.IsDefined(typeof(ResponseCode), code))
+            {
+                await SendAsync(new Response
+                {
+                    Code = ResponseCode.SyntaxError,
+                    Message = $"Syntax error: Unknown response code {code}"
+                });
+
+                return false;
+            }
+
+            // Register response received
+            OnResponseReceived(new Response
+            {
+                Code = code,
+                Message = match.Groups[2].Value
+            });
+            return true;
+        }
+
+        private async Task<bool> TryHandleCommandAsync(string value)
+        {
+            // Check if command
+            Match match = _commandRegex.Match(value);
+
+            if (!match.Success)
+                return false;
+
+            string commandCode = match.Groups[1].Value;
+            ICommand command = GetCommand(commandCode);
+
+            // Validate
+            if (command is null)
+            {
+                await SendAsync(new Response
+                {
+                    Code = ResponseCode.SyntaxError,
+                    Message = $"Syntax error: Command \"{commandCode.ToUpperInvariant()}\" not found"
+                });
+                return false;
+            }
+
+            // Register received command
+            string argument = match.Groups[2].Value;
+
+            OnCommandReceived(new ReceivedCommand
+            {
+                Command = command,
+                Argument = argument
+            });
+            return true;
+        }
+
         /// <summary>
         /// Waits and receives one response or command.
-        /// To catch these messages, see <see cref="CommandReceived"/> and <see cref="ResponseReceived"/>
+        /// To catch these messages, see <see cref="CommandReceived">CommandReceived</see> and <see cref="ResponseReceived">ResponseReceived</see>
         /// </summary>
         [NotNull]
         public async Task ReceiveAsync()
         {
             if (!ConnectionOpen)
                 throw new InvalidOperationException("Stream has closed!");
-            
+
             while (true)
             {
                 string line = await _reader.ReadLineAsync();
@@ -79,63 +144,11 @@ namespace BattleshipProtocol.Protocol
                     return;
                 }
 
-                // Check if response code
-                Match match = _responseRegex.Match(line);
-
-                if (match.Success)
-                {
-                    var code = (ResponseCode)short.Parse(match.Groups[1].Value);
-
-                    // Validate
-                    if (!Enum.IsDefined(typeof(ResponseCode), code))
-                    {
-                        await SendAsync( new Response
-                        {
-                            Code = ResponseCode.SyntaxError,
-                            Message = $"Syntax error: Unknown response code {code}"
-                        });
-
-                        continue;
-                    }
-
-                    // Register response received
-                    OnResponseReceived(new Response
-                    {
-                        Code = code,
-                        Message = match.Groups[2].Value
-                    });
+                if (await TryHandleResponseAsync(line))
                     return;
-                }
 
-                // Check if command
-                match = _commandRegex.Match(line);
-
-                if (match.Success)
-                {
-                    string commandCode = match.Groups[1].Value;
-                    ICommand command = GetCommand(commandCode);
-
-                    // Validate
-                    if (command is null)
-                    {
-                        await SendAsync(new Response
-                        {
-                            Code = ResponseCode.SyntaxError,
-                            Message = $"Syntax error: Command \"{commandCode.ToUpperInvariant()}\" not found"
-                        });
-                        continue;
-                    }
-
-                    // Register received command
-                    string argument = match.Groups[2].Value;
-
-                    OnCommandReceived(new ReceivedCommand
-                    {
-                        Command = command,
-                        Argument = argument
-                    });
+                if (await TryHandleCommandAsync(line))
                     return;
-                }
 
                 // Respond with "WHATYOUMEAN??"
                 await SendAsync(new Response

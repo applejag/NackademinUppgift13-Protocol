@@ -10,11 +10,13 @@ namespace BattleshipProtocol.Protocol
 {
     public class BattleClient : IDisposable
     {
-        private TcpClient _client;
+        private readonly TcpClient _client;
+        private readonly BattleStream _stream;
 
         private BattleClient(TcpClient client)
         {
             _client = client;
+            _stream = new BattleStream(client.GetStream());
         }
 
         /// <summary>
@@ -29,13 +31,14 @@ namespace BattleshipProtocol.Protocol
 
             await tcp.ConnectAsync(address, port);
 
+
             return new BattleClient(tcp);
         }
 
         public virtual void Dispose()
         {
-            _client?.Dispose();
-            _client = null;
+            _client.Dispose();
+            _stream.Dispose();
         }
     }
 }
