@@ -4,7 +4,10 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
 using BattleshipProtocol.Protocol.Commands;
+using BattleshipProtocol.Protocol.Extensions;
 using JetBrains.Annotations;
 
 namespace BattleshipProtocol.Protocol
@@ -14,6 +17,8 @@ namespace BattleshipProtocol.Protocol
         private readonly Stream _stream;
         private readonly StreamReader _reader;
         private readonly StreamWriter _writer;
+
+        private readonly SemaphoreSlim _writerSemaphore = new SemaphoreSlim(1, 1);
 
         private readonly Regex _commandRegex = new Regex(@"^([a-z]+)(?: (.*))?$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private readonly Regex _responseRegex = new Regex(@"^([0-9]{1,3})(?: (.*))?$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
@@ -58,14 +63,15 @@ namespace BattleshipProtocol.Protocol
         /// Waits and receives one response or command.
         /// To catch these messages, see <see cref="CommandReceived"/> and <see cref="ResponseReceived"/>
         /// </summary>
-        public void Receive()
+        [NotNull]
+        public async Task ReceiveAsync()
         {
             if (!ConnectionOpen)
                 throw new InvalidOperationException("Stream has closed!");
-
+            
             while (true)
             {
-                string line = _reader.ReadLine();
+                string line = await _reader.ReadLineAsync();
 
                 if (line is null)
                 {
@@ -83,7 +89,7 @@ namespace BattleshipProtocol.Protocol
                     // Validate
                     if (!Enum.IsDefined(typeof(ResponseCode), code))
                     {
-                        Send( new Response
+                        await SendAsync( new Response
                         {
                             Code = ResponseCode.SyntaxError,
                             Message = $"Syntax error: Unknown response code {code}"
@@ -112,7 +118,7 @@ namespace BattleshipProtocol.Protocol
                     // Validate
                     if (command is null)
                     {
-                        Send(new Response
+                        await SendAsync(new Response
                         {
                             Code = ResponseCode.SyntaxError,
                             Message = $"Syntax error: Command \"{commandCode.ToUpperInvariant()}\" not found"
@@ -132,7 +138,7 @@ namespace BattleshipProtocol.Protocol
                 }
 
                 // Respond with "WHATYOUMEAN??"
-                Send(new Response
+                await SendAsync(new Response
                 {
                     Code = ResponseCode.SyntaxError,
                     Message = "Syntax error: Unable to parse message"
@@ -141,19 +147,19 @@ namespace BattleshipProtocol.Protocol
             }
         }
 
-        public void Send(Response response)
+        public async Task SendAsync(Response response)
         {
             if (!ConnectionOpen)
                 throw new InvalidOperationException("Stream has closed!");
 
-            lock (_writer)
+            using (_writerSemaphore.EnterAsync())
             {
-                _writer.WriteLine(response.ToString());
-                _writer.Flush();
+                await _writer.WriteLineAsync(response.ToString());
+                await _writer.FlushAsync();
             }
         }
 
-        public void Send([NotNull] ICommand command, [CanBeNull] string argument)
+        public async Task SendAsync([NotNull] ICommand command, [CanBeNull] string argument)
         {
             if (command is null)
                 throw new ArgumentNullException(nameof(command));
@@ -161,13 +167,13 @@ namespace BattleshipProtocol.Protocol
             if (!ConnectionOpen)
                 throw new InvalidOperationException("Stream has closed!");
 
-            lock (_writer)
+            using (_writerSemaphore.EnterAsync())
             {
-                _writer.WriteLine(string.IsNullOrEmpty(argument)
+                await _writer.WriteLineAsync(string.IsNullOrEmpty(argument)
                     ? command.Command
                     : $"{command.Command} {argument}");
 
-                _writer.Flush();
+                await _writer.FlushAsync();
             }
         }
 
@@ -185,6 +191,7 @@ namespace BattleshipProtocol.Protocol
             _stream.Dispose();
             _reader.Dispose();
             _writer.Dispose();
+            _writerSemaphore.Dispose();
         }
 
         protected virtual void OnCommandReceived(ReceivedCommand e)
