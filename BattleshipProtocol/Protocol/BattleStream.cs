@@ -28,18 +28,14 @@ namespace BattleshipProtocol.Protocol
         private readonly Regex _responseRegex =
             new Regex(@"^([0-9]{1,3})(?: (.*))?$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
+        private readonly HashSet<ICommandTemplate> _registeredCommands = new HashSet<ICommandTemplate>();
+
+        private readonly HashSet<IObserver<IPacket>> _packetObservers = new HashSet<IObserver<IPacket>>();
+
         public bool ConnectionOpen { get; private set; }
 
         [NotNull, ItemNotNull]
-        private readonly HashSet<ICommandTemplate> _registeredCommands = new HashSet<ICommandTemplate>();
-
-        [NotNull, ItemNotNull]
-        private readonly HashSet<IObserver<IPacket>> _packetObservers = new HashSet<IObserver<IPacket>>();
-
-        [NotNull, ItemNotNull]
         public IReadOnlyCollection<ICommandTemplate> RegisteredCommands => _registeredCommands;
-
-        public event EventHandler StreamClosed;
 
         /// <inheritdoc />
         /// <summary>
