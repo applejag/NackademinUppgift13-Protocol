@@ -7,7 +7,7 @@ namespace BattleshipProtocol.Protocol.Exceptions
         public short UnknownResponseCode { get; }
 
         public ProtocolUnknownResponseException(short unknownCode) 
-            : base(ResponseCode.SyntaxError, $"Syntax error: Unknown response code {unknownCode}")
+            : base(ResponseCode.SyntaxError, $"Syntax error: Unknown response code {unknownCode}.")
         {
             UnknownResponseCode = unknownCode;
         }
