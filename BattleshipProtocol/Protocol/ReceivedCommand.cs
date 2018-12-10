@@ -3,8 +3,10 @@ using JetBrains.Annotations;
 
 namespace BattleshipProtocol.Protocol
 {
-    public struct ReceivedCommand
+    public struct ReceivedCommand : IPacket
     {
+        public string Source { get; set; }
+
         [NotNull]
         public ICommandFactory CommandFactory { get; set; }
 

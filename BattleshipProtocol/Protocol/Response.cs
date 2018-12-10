@@ -2,8 +2,10 @@
 
 namespace BattleshipProtocol.Protocol
 {
-    public struct Response
+    public struct Response : IPacket
     {
+        public string Source { get; set; }
+
         public ResponseCode Code { get; set; }
 
         [CanBeNull]

@@ -8,11 +8,12 @@ using System.Threading;
 using System.Threading.Tasks;
 using BattleshipProtocol.Protocol.Commands;
 using BattleshipProtocol.Protocol.Extensions;
+using BattleshipProtocol.Protocol.Internal;
 using JetBrains.Annotations;
 
 namespace BattleshipProtocol.Protocol
 {
-    public class BattleStream : IDisposable
+    public class BattleStream : IDisposable, IObservable<IPacket>
     {
         private readonly Stream _stream;
         private readonly StreamReader _reader;
@@ -32,10 +33,11 @@ namespace BattleshipProtocol.Protocol
         private readonly List<ICommandFactory> _registeredCommands = new List<ICommandFactory>();
 
         [NotNull, ItemNotNull]
+        private readonly HashSet<IObserver<IPacket>> _packetObservers = new HashSet<IObserver<IPacket>>();
+
+        [NotNull, ItemNotNull]
         public IReadOnlyCollection<ICommandFactory> RegisteredCommands => _registeredCommands;
 
-        public event EventHandler<ReceivedCommand> CommandReceived;
-        public event EventHandler<Response> ResponseReceived;
         public event EventHandler StreamClosed;
 
         /// <inheritdoc />
@@ -45,7 +47,8 @@ namespace BattleshipProtocol.Protocol
         /// <param name="stream">The stream to use when reading and writing data.</param>
         public BattleStream([NotNull] Stream stream)
             : this(stream, Encoding.UTF8)
-        { }
+        {
+        }
 
         /// <inheritdoc />
         /// <summary>
@@ -62,15 +65,15 @@ namespace BattleshipProtocol.Protocol
 
         #region Readers and writers of protocol types
 
-        private async Task<bool> TryHandleResponseAsync(string value)
+        private async Task<bool> TryHandleResponseAsync(string source)
         {
             // Check if response code
-            Match match = _responseRegex.Match(value);
+            Match match = _responseRegex.Match(source);
 
             if (!match.Success)
                 return false;
 
-            var code = (ResponseCode)short.Parse(match.Groups[1].Value);
+            var code = (ResponseCode) short.Parse(match.Groups[1].Value);
 
             // Validate
             if (!Enum.IsDefined(typeof(ResponseCode), code))
@@ -87,16 +90,17 @@ namespace BattleshipProtocol.Protocol
             // Register response received
             OnResponseReceived(new Response
             {
+                Source = source,
                 Code = code,
                 Message = match.Groups[2].Value
             });
             return true;
         }
 
-        private async Task<bool> TryHandleCommandAsync(string value)
+        private async Task<bool> TryHandleCommandAsync(string source)
         {
             // Check if command
-            Match match = _commandRegex.Match(value);
+            Match match = _commandRegex.Match(source);
 
             if (!match.Success)
                 return false;
@@ -120,6 +124,7 @@ namespace BattleshipProtocol.Protocol
 
             OnCommandReceived(new ReceivedCommand
             {
+                Source = source,
                 CommandFactory = commandFactory,
                 Argument = argument
             });
@@ -158,7 +163,6 @@ namespace BattleshipProtocol.Protocol
                     Code = ResponseCode.SyntaxError,
                     Message = "Syntax error: Unable to parse message"
                 });
-
             }
         }
 
@@ -233,18 +237,35 @@ namespace BattleshipProtocol.Protocol
 
         protected virtual void OnCommandReceived(ReceivedCommand e)
         {
-            CommandReceived?.Invoke(this, e);
+            foreach (IObserver<IPacket> observer in _packetObservers)
+            {
+                observer.OnNext(e);
+            }
         }
 
         protected virtual void OnResponseReceived(Response e)
         {
-            ResponseReceived?.Invoke(this, e);
+            foreach (IObserver<IPacket> observer in _packetObservers)
+            {
+                observer.OnNext(e);
+            }
         }
 
         protected virtual void OnStreamClosed()
         {
             ConnectionOpen = false;
             StreamClosed?.Invoke(this, EventArgs.Empty);
+        }
+
+        public IDisposable Subscribe(IObserver<IPacket> observer)
+        {
+            if (observer is null)
+                throw new ArgumentNullException(nameof(observer));
+
+            if (!_packetObservers.Contains(observer))
+                _packetObservers.Add(observer);
+
+            return new ObserverUnsubscriber<IPacket>(_packetObservers, observer);
         }
     }
 }
