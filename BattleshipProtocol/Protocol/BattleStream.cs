@@ -7,6 +7,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using BattleshipProtocol.Protocol.Commands;
+using BattleshipProtocol.Protocol.Exceptions;
 using BattleshipProtocol.Protocol.Extensions;
 using BattleshipProtocol.Protocol.Internal;
 using JetBrains.Annotations;
@@ -65,7 +66,7 @@ namespace BattleshipProtocol.Protocol
 
         #region Readers and writers of protocol types
 
-        private async Task<bool> TryHandleResponseAsync(string source)
+        private bool TryHandleResponse(string source)
         {
             // Check if response code
             Match match = _responseRegex.Match(source);
@@ -73,18 +74,13 @@ namespace BattleshipProtocol.Protocol
             if (!match.Success)
                 return false;
 
-            var code = (ResponseCode)short.Parse(match.Groups[1].Value);
+            if (!Enum.TryParse(match.Groups[1].Value, out ResponseCode code))
+                return false;
 
             // Validate
             if (!Enum.IsDefined(typeof(ResponseCode), code))
             {
-                await SendAsync(new Response
-                {
-                    Code = ResponseCode.SyntaxError,
-                    Message = $"Syntax error: Unknown response code {code}"
-                });
-
-                return false;
+                throw new ProtocolUnknownResponseException((short)code);
             }
 
             // Register response received
@@ -94,10 +90,11 @@ namespace BattleshipProtocol.Protocol
                 Code = code,
                 Message = match.Groups[2].Value
             });
+
             return true;
         }
 
-        private async Task<bool> TryHandleCommandAsync(string source)
+        private bool TryHandleCommand(string source)
         {
             // Check if command
             Match match = _commandRegex.Match(source);
@@ -111,12 +108,7 @@ namespace BattleshipProtocol.Protocol
             // Validate
             if (commandTemplate is null)
             {
-                await SendAsync(new Response
-                {
-                    Code = ResponseCode.SyntaxError,
-                    Message = $"Syntax error: Command \"{commandCode.ToUpperInvariant()}\" not found"
-                });
-                return false;
+                throw new ProtocolUnknownCommandException(commandCode);
             }
 
             // Register received command
@@ -128,6 +120,7 @@ namespace BattleshipProtocol.Protocol
                 CommandTemplate = commandTemplate,
                 Argument = argument
             });
+
             return true;
         }
 
@@ -140,30 +133,75 @@ namespace BattleshipProtocol.Protocol
         {
             if (!ConnectionOpen)
                 throw new InvalidOperationException("Stream has closed!");
-
+            
             while (true)
             {
-                string line = await _reader.ReadLineAsync();
-
-                if (line is null)
+                try
                 {
-                    ConnectionOpen = false;
-                    OnStreamClosed();
-                    return;
+                    string line = await _reader.ReadLineAsync();
+
+                    if (line is null)
+                    {
+                        ConnectionOpen = false;
+                        OnStreamClosed();
+                        return;
+                    }
+
+                    if (TryHandleResponse(line))
+                        return;
+
+                    if (TryHandleCommand(line))
+                        return;
+
+                    // "WHAT YOU MEAN??"
+                    throw new ProtocolFormatException();
                 }
-
-                if (await TryHandleResponseAsync(line))
-                    return;
-
-                if (await TryHandleCommandAsync(line))
-                    return;
-
-                // Respond with "WHATYOUMEAN??"
-                await SendAsync(new Response
+                catch (ProtocolException error)
                 {
-                    Code = ResponseCode.SyntaxError,
-                    Message = "Syntax error: Unable to parse message"
-                });
+                    await SendErrorAsync(error);
+                    OnError(error);
+                }
+                catch (Exception unexpected)
+                {
+                    OnError(unexpected);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Send a textblock (asynchronously) to the other client.
+        /// </summary>
+        /// <param name="text">The text to transmit.</param>
+        /// <exception cref="InvalidOperationException">Thrown if the connection has been closed.</exception>
+        public async Task SendTextAsync(string text)
+        {
+            if (!ConnectionOpen)
+                throw new InvalidOperationException("Stream has closed!");
+
+            using (_writerSemaphore.EnterAsync())
+            {
+                foreach (string line in text.Split(new[]{ "\n\r", "\r\n", "\r", "\n" }, StringSplitOptions.None))
+                {
+                    await _writer.WriteLineAsync(line);
+                }
+                await _writer.FlushAsync();
+            }
+        }
+
+        /// <summary>
+        /// Send an exception (asynchronously) to the other client in the form of a response code.
+        /// </summary>
+        /// <param name="error">The exception to transmit.</param>
+        /// <exception cref="InvalidOperationException">Thrown if the connection has been closed.</exception>
+        public async Task SendErrorAsync(ProtocolException error)
+        {
+            if (!ConnectionOpen)
+                throw new InvalidOperationException("Stream has closed!");
+
+            using (_writerSemaphore.EnterAsync())
+            {
+                await _writer.WriteLineAsync($"{(short) error.ErrorCode} {error.ErrorMessage}");
+                await _writer.FlushAsync();
             }
         }
 
@@ -172,7 +210,7 @@ namespace BattleshipProtocol.Protocol
         /// </summary>
         /// <param name="response">The response to transmit.</param>
         /// <exception cref="InvalidOperationException">Thrown if the connection has been closed.</exception>
-        public async Task SendAsync(Response response)
+        public async Task SendResponseAsync(Response response)
         {
             if (!ConnectionOpen)
                 throw new InvalidOperationException("Stream has closed!");
@@ -191,7 +229,7 @@ namespace BattleshipProtocol.Protocol
         /// <exception cref="ArgumentException">Thrown if <typeparamref name="T"/> did not match any registered command.</exception>
         /// <exception cref="InvalidOperationException">Thrown if the connection has been closed.</exception>
         [NotNull]
-        public async Task SendAsync<T>([CanBeNull] string argument = null) where T : class, ICommandTemplate
+        public async Task SendCommandAsync<T>([CanBeNull] string argument = null) where T : class, ICommandTemplate
         {
             if (!ConnectionOpen)
                 throw new InvalidOperationException("Stream has closed!");
@@ -201,10 +239,10 @@ namespace BattleshipProtocol.Protocol
             if (commandTemplate is null)
                 throw new ArgumentException($"Command {typeof(T).Name} is not registered for this stream.", nameof(T));
 
-            await SendAsyncInternal(commandTemplate, argument);
+            await SendCommandAsyncInternal(commandTemplate, argument);
         }
 
-        private async Task SendAsyncInternal([NotNull] ICommandTemplate commandTemplate, [CanBeNull] string argument)
+        private async Task SendCommandAsyncInternal([NotNull] ICommandTemplate commandTemplate, [CanBeNull] string argument)
         {
             using (_writerSemaphore.EnterAsync())
             {
