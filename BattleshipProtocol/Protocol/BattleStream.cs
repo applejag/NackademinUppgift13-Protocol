@@ -61,8 +61,11 @@ namespace BattleshipProtocol.Protocol
 
         #region Readers and writers of protocol types
 
-        private bool TryHandleResponse(string source)
+        [Pure]
+        private bool TryParseResponse(string source, out Response response)
         {
+            response = default;
+
             // Check if response code
             Match match = _responseRegex.Match(source);
 
@@ -79,18 +82,21 @@ namespace BattleshipProtocol.Protocol
             }
 
             // Register response received
-            OnResponseReceived(new Response
+            response = new Response
             {
                 Source = source,
                 Code = code,
                 Message = match.Groups[2].Value
-            });
+            };
 
             return true;
         }
 
-        private bool TryHandleCommand(string source)
+        [Pure]
+        private bool TryParseCommand(string source, out ReceivedCommand command)
         {
+            command = default;
+
             // Check if command
             Match match = _commandRegex.Match(source);
 
@@ -109,58 +115,146 @@ namespace BattleshipProtocol.Protocol
             // Register received command
             string argument = match.Groups[2].Value;
 
-            OnCommandReceived(new ReceivedCommand
+            command = new ReceivedCommand
             {
                 Source = source,
                 CommandTemplate = commandTemplate,
                 Argument = argument
-            });
+            };
 
             return true;
+        }
+
+        /// <summary>
+        /// Starts the reading loop.
+        /// To catch these messages, subscribe using the <see cref="Subscribe"/> method.
+        /// </summary>
+        /// <exception cref="InvalidOperationException">Thrown if it's already listening.</exception>
+        public async void BeginListening()
+        {
+            if (!Monitor.TryEnter(_reader))
+                throw new InvalidOperationException("This stream is already listening.");
+
+            try
+            {
+                while (true)
+                {
+                    await ReceiveAsync();
+                }
+            }
+            finally
+            {
+                Monitor.Exit(_reader);
+            }
         }
 
         /// <summary>
         /// Waits and receives one response or command.
         /// To catch these messages, subscribe using the <see cref="Subscribe"/> method.
         /// </summary>
+        /// <exception cref="InvalidOperationException">Thrown if the connection has been closed.</exception>
         [NotNull]
-        public async Task ReceiveAsync()
+        private async Task ReceiveAsync()
         {
             if (!ConnectionOpen)
                 throw new InvalidOperationException("Stream has closed!");
-            
-            while (true)
+
+            try
             {
-                try
+                string line = await ReadLineAsyncInternal();
+
+                if (line is null)
+                    return;
+
+                if (TryParseResponse(line, out Response response))
                 {
-                    string line = await _reader.ReadLineAsync();
-
-                    if (line is null)
-                    {
-                        ConnectionOpen = false;
-                        OnStreamClosed();
-                        return;
-                    }
-
-                    if (TryHandleResponse(line))
-                        return;
-
-                    if (TryHandleCommand(line))
-                        return;
-
-                    // "WHAT YOU MEAN??"
-                    throw new ProtocolFormatException();
+                    OnResponseReceived(response);
+                    return;
                 }
-                catch (ProtocolException error)
+
+                if (TryParseCommand(line, out ReceivedCommand command))
                 {
-                    await SendErrorAsync(error);
-                    OnError(error);
+                    OnCommandReceived(command);
+                    return;
                 }
-                catch (Exception unexpected)
-                {
-                    OnError(unexpected);
-                }
+
+                // "WHAT YOU MEAN??"
+                throw new ProtocolFormatException(line);
             }
+            catch (ProtocolException error)
+            {
+                await SendErrorAsync(error);
+                OnError(error);
+            }
+            catch (Exception unexpected)
+            {
+                OnError(unexpected);
+            }
+        }
+
+        [NotNull]
+        public async Task<Response> ExpectResponseAsync()
+        {
+            if (!ConnectionOpen)
+                throw new InvalidOperationException("Stream has closed!");
+
+            if (!Monitor.TryEnter(_reader))
+                throw new InvalidOperationException("This stream is already listening.");
+
+            try
+            {
+                string line = await ReadLineAsyncInternal();
+
+                if (!TryParseResponse(line, out Response response))
+                    throw new ProtocolFormatException(line);
+
+                OnResponseReceived(response);
+                return response;
+            }
+            finally
+            {
+                Monitor.Exit(_reader);
+            }
+        }
+
+        [NotNull]
+        public async Task<ReceivedCommand> ExpectCommandAsync()
+        {
+            if (!ConnectionOpen)
+                throw new InvalidOperationException("Stream has closed!");
+
+            if (!Monitor.TryEnter(_reader))
+                throw new InvalidOperationException("This stream is already listening.");
+
+            try
+            {
+                string line = await ReadLineAsyncInternal();
+
+                if (!TryParseCommand(line, out ReceivedCommand command))
+                    throw new ProtocolFormatException(line);
+
+                OnCommandReceived(command);
+                return command;
+            }
+            finally
+            {
+                Monitor.Exit(_reader);
+            }
+        }
+
+        [NotNull, ItemCanBeNull]
+        private async Task<string> ReadLineAsyncInternal()
+        {
+            string line = await _reader.ReadLineAsync();
+
+            if (line is null)
+            {
+                ConnectionOpen = false;
+                OnStreamClosed();
+                return null;
+            }
+
+            return line;
         }
 
         /// <summary>
@@ -175,7 +269,7 @@ namespace BattleshipProtocol.Protocol
 
             using (_writerSemaphore.EnterAsync())
             {
-                foreach (string line in text.Split(new[]{ "\n\r", "\r\n", "\r", "\n" }, StringSplitOptions.None))
+                foreach (string line in text.Split(new[] { "\n\r", "\r\n", "\r", "\n" }, StringSplitOptions.None))
                 {
                     await _writer.WriteLineAsync(line);
                 }
@@ -195,7 +289,7 @@ namespace BattleshipProtocol.Protocol
 
             using (_writerSemaphore.EnterAsync())
             {
-                await _writer.WriteLineAsync($"{(short) error.ErrorCode} {error.ErrorMessage}");
+                await _writer.WriteLineAsync($"{(short)error.ErrorCode} {error.ErrorMessage}");
                 await _writer.FlushAsync();
             }
         }
