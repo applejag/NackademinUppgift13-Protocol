@@ -15,13 +15,13 @@ namespace BattleshipProtocol.Protocol.Commands
         /// </summary>
         /// <param name="context">The game context.</param>
         /// <param name="argument">The argument received with the command.</param>
-        void OnCommand([NotNull] BattleGame context, [CanBeNull] string argument);
+        void OnCommand([NotNull] BattleClient context, [CanBeNull] string argument);
 
         /// <summary>
         /// Handles a received response from the other client.
         /// </summary>
         /// <param name="context">The game context.</param>
         /// <param name="response">The response.</param>
-        void OnResponse([NotNull] BattleGame context, Response response);
+        void OnResponse([NotNull] BattleClient context, Response response);
     }
 }

@@ -6,7 +6,7 @@
         public string Command { get; } = "START";
 
         /// <inheritdoc />
-        public void OnCommand(BattleGame context, string argument)
+        public void OnCommand(BattleClient context, string argument)
         {
             // TODO: Validate game state
             // TODO: Switch to game-phase
@@ -14,7 +14,7 @@
         }
 
         /// <inheritdoc />
-        public void OnResponse(BattleGame context, Response response)
+        public void OnResponse(BattleClient context, Response response)
         {
             // TODO: Validate game state
             // TODO: Switch to game-phase

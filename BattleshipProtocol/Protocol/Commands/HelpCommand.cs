@@ -8,14 +8,14 @@ namespace BattleshipProtocol.Protocol.Commands
         public string Command { get; } = "HELP";
 
         /// <inheritdoc />
-        public void OnCommand(BattleGame context, string argument)
+        public void OnCommand(BattleClient context, string argument)
         {
             // TODO: Display help
             throw new System.NotImplementedException();
         }
 
         /// <inheritdoc />
-        public void OnResponse(BattleGame context, Response response)
+        public void OnResponse(BattleClient context, Response response)
         {
             throw new NotSupportedException();
         }
