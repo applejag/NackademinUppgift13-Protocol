@@ -3,7 +3,7 @@
     public class FireCommand : ICommandTemplate
     {
         /// <inheritdoc />
-        public string Command { get; } = "START";
+        public string Command { get; } = "FIRE";
 
         /// <inheritdoc />
         public void OnCommand(BattleGame context, string argument)
