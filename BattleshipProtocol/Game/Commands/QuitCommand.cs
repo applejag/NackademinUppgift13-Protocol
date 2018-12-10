@@ -9,7 +9,7 @@ namespace BattleshipProtocol.Game.Commands
         public string Command { get; } = "QUIT";
 
         /// <inheritdoc />
-        public void OnCommand(BattleClient context, string argument)
+        public void OnCommand(BattleGame context, string argument)
         {
             // TODO: Close connection
             // TODO: Send 270
@@ -17,7 +17,7 @@ namespace BattleshipProtocol.Game.Commands
         }
 
         /// <inheritdoc />
-        public void OnResponse(BattleClient context, Response response)
+        public void OnResponse(BattleGame context, Response response)
         {
             // TODO: Is 270? Then close connection
             throw new NotSupportedException();

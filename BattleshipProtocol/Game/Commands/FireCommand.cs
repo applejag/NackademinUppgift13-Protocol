@@ -8,7 +8,7 @@ namespace BattleshipProtocol.Game.Commands
         public string Command { get; } = "FIRE";
 
         /// <inheritdoc />
-        public void OnCommand(BattleClient context, string argument)
+        public void OnCommand(BattleGame context, string argument)
         {
             // TODO: Validate game state
             // TODO: Fire on our grid
@@ -17,7 +17,7 @@ namespace BattleshipProtocol.Game.Commands
         }
 
         /// <inheritdoc />
-        public void OnResponse(BattleClient context, Response response)
+        public void OnResponse(BattleGame context, Response response)
         {
             // TODO: Validate game state
             // TODO: Register fire on their grid
