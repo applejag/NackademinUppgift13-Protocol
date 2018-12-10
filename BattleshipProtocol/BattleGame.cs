@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 using BattleshipProtocol.Game.Commands;
@@ -9,17 +10,19 @@ using JetBrains.Annotations;
 
 namespace BattleshipProtocol
 {
-    public class BattleGame
+    public class BattleGame : IDisposable
     {
         public const string ProtocolVersion = "BATTLESHIP/1.0";
 
         private readonly TcpClient _client;
         private readonly BattleStream _stream;
         public bool IsHost { get; }
-        public string PlayerName { get; private set; }
+        public string PlayerName { get; }
         public string OpponentName { get; private set; }
 
-        private BattleGame(TcpClient client, BattleStream stream, bool isHost)
+        public EndPoint RemoteEndPoint => _client.Client.RemoteEndPoint;
+
+        private BattleGame(TcpClient client, BattleStream stream, string playerName, bool isHost)
         {
             IsHost = isHost;
             _client = client;
@@ -62,7 +65,7 @@ namespace BattleshipProtocol
 
             await stream.SendCommandAsync<HelloCommand>(playerName);
 
-            return new BattleGame(tcp, stream, isHost: false);
+            return new BattleGame(tcp, stream, playerName, isHost: false);
         }
 
         /// <summary>
@@ -77,7 +80,7 @@ namespace BattleshipProtocol
         /// <param name="port">Host port.</param>
         /// <exception cref="SocketException">An error occurred when accessing the socket.</exception>
         [NotNull]
-        public static async Task<BattleGame> HostAndWaitAsync(ushort port)
+        public static async Task<BattleGame> HostAndWaitAsync(ushort port, string playerName)
         {
             TcpListener listener = TcpListener.Create(port);
             try
@@ -99,7 +102,7 @@ namespace BattleshipProtocol
                 stream.RegisterCommand(new StartCommand());
                 stream.RegisterCommand(new QuitCommand());
 
-                return new BattleGame(tcp, stream, true);
+                return new BattleGame(tcp, stream, playerName, true);
             }
             finally
             {
