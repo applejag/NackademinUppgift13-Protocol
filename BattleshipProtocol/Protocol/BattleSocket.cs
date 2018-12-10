@@ -13,7 +13,7 @@ using JetBrains.Annotations;
 
 namespace BattleshipProtocol.Protocol
 {
-    public class BattleStream : IDisposable, IObservable<IPacket>
+    public class BattleSocket : IDisposable, IObservable<IPacket>
     {
         private readonly Stream _stream;
         private readonly StreamReader _reader;
@@ -41,7 +41,7 @@ namespace BattleshipProtocol.Protocol
         /// Initializes the Battleship commands stream with encoding <see cref="P:System.Text.Encoding.UTF8" />
         /// </summary>
         /// <param name="stream">The stream to use when reading and writing data.</param>
-        public BattleStream([NotNull] Stream stream)
+        public BattleSocket([NotNull] Stream stream)
             : this(stream, Encoding.UTF8)
         {
         }
@@ -52,7 +52,7 @@ namespace BattleshipProtocol.Protocol
         /// </summary>
         /// <param name="stream">The stream to use when reading and writing data.</param>
         /// <param name="encoding">The encoding to use when reading and writing data.</param>
-        public BattleStream([NotNull] Stream stream, [NotNull] Encoding encoding)
+        public BattleSocket([NotNull] Stream stream, [NotNull] Encoding encoding)
         {
             _stream = stream;
             _reader = new StreamReader(stream, encoding);
