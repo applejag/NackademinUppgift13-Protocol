@@ -8,7 +8,7 @@ namespace BattleshipProtocol.Protocol
         public string Source { get; set; }
 
         [NotNull]
-        public ICommandFactory CommandFactory { get; set; }
+        public ICommandTemplate CommandTemplate { get; set; }
 
         [CanBeNull]
         public string Argument { get; set; }

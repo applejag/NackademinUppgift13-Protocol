@@ -2,7 +2,7 @@
 
 namespace BattleshipProtocol.Protocol.Commands
 {
-    public interface ICommandFactory
+    public interface ICommandTemplate
     {
         /// <summary>
         /// The ~4-5 character code of this command.

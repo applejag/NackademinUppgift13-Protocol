@@ -30,13 +30,13 @@ namespace BattleshipProtocol.Protocol
         public bool ConnectionOpen { get; private set; }
 
         [NotNull, ItemNotNull]
-        private readonly List<ICommandFactory> _registeredCommands = new List<ICommandFactory>();
+        private readonly List<ICommandTemplate> _registeredCommands = new List<ICommandTemplate>();
 
         [NotNull, ItemNotNull]
         private readonly HashSet<IObserver<IPacket>> _packetObservers = new HashSet<IObserver<IPacket>>();
 
         [NotNull, ItemNotNull]
-        public IReadOnlyCollection<ICommandFactory> RegisteredCommands => _registeredCommands;
+        public IReadOnlyCollection<ICommandTemplate> RegisteredCommands => _registeredCommands;
 
         public event EventHandler StreamClosed;
 
@@ -106,10 +106,10 @@ namespace BattleshipProtocol.Protocol
                 return false;
 
             string commandCode = match.Groups[1].Value;
-            ICommandFactory commandFactory = GetCommand(commandCode);
+            ICommandTemplate commandTemplate = GetCommand(commandCode);
 
             // Validate
-            if (commandFactory is null)
+            if (commandTemplate is null)
             {
                 await SendAsync(new Response
                 {
@@ -125,7 +125,7 @@ namespace BattleshipProtocol.Protocol
             OnCommandReceived(new ReceivedCommand
             {
                 Source = source,
-                CommandFactory = commandFactory,
+                CommandTemplate = commandTemplate,
                 Argument = argument
             });
             return true;
@@ -183,43 +183,43 @@ namespace BattleshipProtocol.Protocol
             if (command is null)
                 throw new ArgumentNullException(nameof(command));
 
-            ICommandFactory commandFactory = GetCommand(command);
+            ICommandTemplate commandTemplate = GetCommand(command);
 
-            if (commandFactory is null)
+            if (commandTemplate is null)
                 throw new NotSupportedException($"Command {command.ToUpper()} is not registered for this stream.");
 
-            await SendAsyncInternal(commandFactory, argument);
+            await SendAsyncInternal(commandTemplate, argument);
         }
 
-        public async Task SendAsync([NotNull] ICommandFactory commandFactory, [CanBeNull] string argument)
+        public async Task SendAsync([NotNull] ICommandTemplate commandTemplate, [CanBeNull] string argument)
         {
-            if (commandFactory is null)
-                throw new ArgumentNullException(nameof(commandFactory));
+            if (commandTemplate is null)
+                throw new ArgumentNullException(nameof(commandTemplate));
 
-            if (!_registeredCommands.Contains(commandFactory))
+            if (!_registeredCommands.Contains(commandTemplate))
                 throw new NotSupportedException(
-                    $"Command {commandFactory.Command.ToUpper()} is not registered for this stream.");
+                    $"Command {commandTemplate.Command.ToUpper()} is not registered for this stream.");
 
             if (!ConnectionOpen)
                 throw new InvalidOperationException("Stream has closed!");
 
-            await SendAsyncInternal(commandFactory, argument);
+            await SendAsyncInternal(commandTemplate, argument);
         }
 
-        private async Task SendAsyncInternal([NotNull] ICommandFactory commandFactory, [CanBeNull] string argument)
+        private async Task SendAsyncInternal([NotNull] ICommandTemplate commandTemplate, [CanBeNull] string argument)
         {
             using (_writerSemaphore.EnterAsync())
             {
                 await _writer.WriteLineAsync(string.IsNullOrEmpty(argument)
-                    ? commandFactory.Command
-                    : $"{commandFactory.Command} {argument}");
+                    ? commandTemplate.Command
+                    : $"{commandTemplate.Command} {argument}");
 
                 await _writer.FlushAsync();
             }
         }
 
         [Pure, CanBeNull]
-        public ICommandFactory GetCommand([NotNull] string command)
+        public ICommandTemplate GetCommand([NotNull] string command)
         {
             return _registeredCommands.FirstOrDefault(cmd =>
                 cmd.Command.Equals(command, StringComparison.InvariantCultureIgnoreCase));

@@ -1,6 +1,6 @@
 ﻿namespace BattleshipProtocol.Protocol.Commands
 {
-    public class FireCommand : ICommandFactory
+    public class FireCommand : ICommandTemplate
     {
         /// <inheritdoc />
         public string Command { get; } = "START";
