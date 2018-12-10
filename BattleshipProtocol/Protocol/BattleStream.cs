@@ -73,7 +73,7 @@ namespace BattleshipProtocol.Protocol
             if (!match.Success)
                 return false;
 
-            var code = (ResponseCode) short.Parse(match.Groups[1].Value);
+            var code = (ResponseCode)short.Parse(match.Groups[1].Value);
 
             // Validate
             if (!Enum.IsDefined(typeof(ResponseCode), code))
@@ -133,7 +133,7 @@ namespace BattleshipProtocol.Protocol
 
         /// <summary>
         /// Waits and receives one response or command.
-        /// To catch these messages, see <see cref="CommandReceived">CommandReceived</see> and <see cref="ResponseReceived">ResponseReceived</see>
+        /// To catch these messages, subscribe using the <see cref="Subscribe"/> method.
         /// </summary>
         [NotNull]
         public async Task ReceiveAsync()
@@ -147,6 +147,7 @@ namespace BattleshipProtocol.Protocol
 
                 if (line is null)
                 {
+                    ConnectionOpen = false;
                     OnStreamClosed();
                     return;
                 }
@@ -166,6 +167,11 @@ namespace BattleshipProtocol.Protocol
             }
         }
 
+        /// <summary>
+        /// Send a response (asynchronously) to the other client.
+        /// </summary>
+        /// <param name="response">The response to transmit.</param>
+        /// <exception cref="InvalidOperationException">Thrown if the connection has been closed.</exception>
         public async Task SendAsync(Response response)
         {
             if (!ConnectionOpen)
@@ -178,30 +184,22 @@ namespace BattleshipProtocol.Protocol
             }
         }
 
-        public async Task SendAsync([NotNull] string command, [CanBeNull] string argument)
+        /// <summary>
+        /// Send a command (asynchronously) to the other client, with the optional argument.
+        /// </summary>
+        /// <param name="argument">The optional argument to append to the command. Should not contain newlines.</param>
+        /// <exception cref="ArgumentException">Thrown if <typeparamref name="T"/> did not match any registered command.</exception>
+        /// <exception cref="InvalidOperationException">Thrown if the connection has been closed.</exception>
+        [NotNull]
+        public async Task SendAsync<T>([CanBeNull] string argument = null) where T : class, ICommandTemplate
         {
-            if (command is null)
-                throw new ArgumentNullException(nameof(command));
-
-            ICommandTemplate commandTemplate = GetCommand(command);
-
-            if (commandTemplate is null)
-                throw new NotSupportedException($"Command {command.ToUpper()} is not registered for this stream.");
-
-            await SendAsyncInternal(commandTemplate, argument);
-        }
-
-        public async Task SendAsync([NotNull] ICommandTemplate commandTemplate, [CanBeNull] string argument)
-        {
-            if (commandTemplate is null)
-                throw new ArgumentNullException(nameof(commandTemplate));
-
-            if (!_registeredCommands.Contains(commandTemplate))
-                throw new NotSupportedException(
-                    $"Command {commandTemplate.Command.ToUpper()} is not registered for this stream.");
-
             if (!ConnectionOpen)
                 throw new InvalidOperationException("Stream has closed!");
+
+            var commandTemplate = GetCommand<T>();
+
+            if (commandTemplate is null)
+                throw new ArgumentException($"Command {typeof(T).Name} is not registered for this stream.", nameof(T));
 
             await SendAsyncInternal(commandTemplate, argument);
         }
@@ -223,6 +221,12 @@ namespace BattleshipProtocol.Protocol
         {
             return _registeredCommands.FirstOrDefault(cmd =>
                 cmd.Command.Equals(command, StringComparison.InvariantCultureIgnoreCase));
+        }
+
+        [Pure, CanBeNull]
+        public T GetCommand<T>() where T : ICommandTemplate
+        {
+            return (T)_registeredCommands.FirstOrDefault(cmd => cmd is T);
         }
 
         /// <summary>
@@ -254,26 +258,36 @@ namespace BattleshipProtocol.Protocol
             _writerSemaphore.Dispose();
         }
 
-        protected virtual void OnCommandReceived(ReceivedCommand e)
+        protected virtual void OnError(Exception error)
         {
             foreach (IObserver<IPacket> observer in _packetObservers)
             {
-                observer.OnNext(e);
+                observer.OnError(error);
             }
         }
 
-        protected virtual void OnResponseReceived(Response e)
+        protected virtual void OnCommandReceived(ReceivedCommand packet)
         {
             foreach (IObserver<IPacket> observer in _packetObservers)
             {
-                observer.OnNext(e);
+                observer.OnNext(packet);
+            }
+        }
+
+        protected virtual void OnResponseReceived(Response packet)
+        {
+            foreach (IObserver<IPacket> observer in _packetObservers)
+            {
+                observer.OnNext(packet);
             }
         }
 
         protected virtual void OnStreamClosed()
         {
-            ConnectionOpen = false;
-            StreamClosed?.Invoke(this, EventArgs.Empty);
+            foreach (IObserver<IPacket> observer in _packetObservers)
+            {
+                observer.OnCompleted();
+            }
         }
 
         public IDisposable Subscribe(IObserver<IPacket> observer)
