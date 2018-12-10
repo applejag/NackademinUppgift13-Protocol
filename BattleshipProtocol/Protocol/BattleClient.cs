@@ -11,12 +11,12 @@ namespace BattleshipProtocol.Protocol
     public class BattleClient : IDisposable
     {
         private readonly TcpClient _client;
-        private readonly BattleSocket _socket;
+        private readonly BattleStream _stream;
 
         private BattleClient(TcpClient client)
         {
             _client = client;
-            _socket = new BattleSocket(client.GetStream());
+            _stream = new BattleStream(client.GetStream());
         }
 
         /// <summary>
@@ -45,7 +45,7 @@ namespace BattleshipProtocol.Protocol
         public virtual void Dispose()
         {
             _client.Dispose();
-            _socket.Dispose();
+            _stream.Dispose();
         }
     }
 }

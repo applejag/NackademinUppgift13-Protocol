@@ -52,7 +52,7 @@
     <Compile Include="Game\ShipType.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Protocol\BattleClient.cs" />
-    <Compile Include="Protocol\BattleSocket.cs" />
+    <Compile Include="Protocol\BattleStream.cs" />
     <Compile Include="Game\Commands\HelloCommand.cs" />
     <Compile Include="Game\Commands\QuitCommand.cs" />
     <Compile Include="Protocol\ICommandTemplate.cs" />
