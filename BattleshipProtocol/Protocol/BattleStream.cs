@@ -8,8 +8,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using BattleshipProtocol.Protocol.Commands;
 using BattleshipProtocol.Protocol.Exceptions;
-using BattleshipProtocol.Protocol.Extensions;
 using BattleshipProtocol.Protocol.Internal;
+using BattleshipProtocol.Protocol.Internal.Extensions;
 using JetBrains.Annotations;
 
 namespace BattleshipProtocol.Protocol

@@ -1,12 +1,9 @@
-﻿using JetBrains.Annotations;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
+using JetBrains.Annotations;
 
-namespace BattleshipProtocol.Protocol.Extensions
+namespace BattleshipProtocol.Protocol.Internal.Extensions
 {
     internal static class ThreadingExtensions
     {
