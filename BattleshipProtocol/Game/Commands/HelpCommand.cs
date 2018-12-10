@@ -1,6 +1,7 @@
 ﻿using System;
+using BattleshipProtocol.Protocol;
 
-namespace BattleshipProtocol.Protocol.Commands
+namespace BattleshipProtocol.Game.Commands
 {
     public class HelpCommand : ICommandTemplate
     {

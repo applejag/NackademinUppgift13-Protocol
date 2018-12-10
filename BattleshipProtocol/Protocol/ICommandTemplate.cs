@@ -1,6 +1,6 @@
 ﻿using JetBrains.Annotations;
 
-namespace BattleshipProtocol.Protocol.Commands
+namespace BattleshipProtocol.Protocol
 {
     public interface ICommandTemplate
     {

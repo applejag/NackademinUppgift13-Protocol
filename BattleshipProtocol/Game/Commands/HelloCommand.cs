@@ -1,4 +1,6 @@
-﻿namespace BattleshipProtocol.Protocol.Commands
+﻿using BattleshipProtocol.Protocol;
+
+namespace BattleshipProtocol.Game.Commands
 {
     public class HelloCommand : ICommandTemplate
     {

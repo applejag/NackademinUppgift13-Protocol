@@ -1,5 +1,4 @@
-﻿using BattleshipProtocol.Protocol.Commands;
-using JetBrains.Annotations;
+﻿using JetBrains.Annotations;
 
 namespace BattleshipProtocol.Protocol
 {
