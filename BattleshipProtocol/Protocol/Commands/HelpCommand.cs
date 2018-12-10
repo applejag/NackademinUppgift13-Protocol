@@ -2,7 +2,7 @@
 
 namespace BattleshipProtocol.Protocol.Commands
 {
-    public class HelpCommand : ICommand
+    public class HelpCommand : ICommandFactory
     {
         /// <inheritdoc />
         public string Command { get; } = "HELP";

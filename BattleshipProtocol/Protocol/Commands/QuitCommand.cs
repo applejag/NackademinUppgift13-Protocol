@@ -2,7 +2,7 @@
 
 namespace BattleshipProtocol.Protocol.Commands
 {
-    public class QuitCommand : ICommand
+    public class QuitCommand : ICommandFactory
     {
         /// <inheritdoc />
         public string Command { get; } = "QUIT";

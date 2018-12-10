@@ -1,9 +1,8 @@
-﻿
-using JetBrains.Annotations;
+﻿using JetBrains.Annotations;
 
 namespace BattleshipProtocol.Protocol.Commands
 {
-    public interface ICommand
+    public interface ICommandFactory
     {
         /// <summary>
         /// The ~4-5 character code of this command.

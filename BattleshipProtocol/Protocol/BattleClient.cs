@@ -31,7 +31,6 @@ namespace BattleshipProtocol.Protocol
 
             await tcp.ConnectAsync(address, port);
 
-
             return new BattleClient(tcp);
         }
 

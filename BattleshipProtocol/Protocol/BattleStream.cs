@@ -20,17 +20,19 @@ namespace BattleshipProtocol.Protocol
 
         private readonly SemaphoreSlim _writerSemaphore = new SemaphoreSlim(1, 1);
 
-        private readonly Regex _commandRegex = new Regex(@"^([a-z]+)(?: (.*))?$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-        private readonly Regex _responseRegex = new Regex(@"^([0-9]{1,3})(?: (.*))?$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private readonly Regex _commandRegex =
+            new Regex(@"^([a-z]+)(?: (.*))?$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+        private readonly Regex _responseRegex =
+            new Regex(@"^([0-9]{1,3})(?: (.*))?$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         public bool ConnectionOpen { get; private set; }
 
-        [NotNull]
-        [ItemNotNull]
-        private readonly List<ICommand> _registeredCommands = new List<ICommand>();
+        [NotNull, ItemNotNull]
+        private readonly List<ICommandFactory> _registeredCommands = new List<ICommandFactory>();
 
         [NotNull, ItemNotNull]
-        public IReadOnlyCollection<ICommand> RegisteredCommands => _registeredCommands;
+        public IReadOnlyCollection<ICommandFactory> RegisteredCommands => _registeredCommands;
 
         public event EventHandler<ReceivedCommand> CommandReceived;
         public event EventHandler<Response> ResponseReceived;
@@ -100,10 +102,10 @@ namespace BattleshipProtocol.Protocol
                 return false;
 
             string commandCode = match.Groups[1].Value;
-            ICommand command = GetCommand(commandCode);
+            ICommandFactory commandFactory = GetCommand(commandCode);
 
             // Validate
-            if (command is null)
+            if (commandFactory is null)
             {
                 await SendAsync(new Response
                 {
@@ -118,7 +120,7 @@ namespace BattleshipProtocol.Protocol
 
             OnCommandReceived(new ReceivedCommand
             {
-                Command = command,
+                CommandFactory = commandFactory,
                 Argument = argument
             });
             return true;
@@ -172,26 +174,48 @@ namespace BattleshipProtocol.Protocol
             }
         }
 
-        public async Task SendAsync([NotNull] ICommand command, [CanBeNull] string argument)
+        public async Task SendAsync([NotNull] string command, [CanBeNull] string argument)
         {
             if (command is null)
                 throw new ArgumentNullException(nameof(command));
 
+            ICommandFactory commandFactory = GetCommand(command);
+
+            if (commandFactory is null)
+                throw new NotSupportedException($"Command {command.ToUpper()} is not registered for this stream.");
+
+            await SendAsyncInternal(commandFactory, argument);
+        }
+
+        public async Task SendAsync([NotNull] ICommandFactory commandFactory, [CanBeNull] string argument)
+        {
+            if (commandFactory is null)
+                throw new ArgumentNullException(nameof(commandFactory));
+
+            if (!_registeredCommands.Contains(commandFactory))
+                throw new NotSupportedException(
+                    $"Command {commandFactory.Command.ToUpper()} is not registered for this stream.");
+
             if (!ConnectionOpen)
                 throw new InvalidOperationException("Stream has closed!");
 
+            await SendAsyncInternal(commandFactory, argument);
+        }
+
+        private async Task SendAsyncInternal([NotNull] ICommandFactory commandFactory, [CanBeNull] string argument)
+        {
             using (_writerSemaphore.EnterAsync())
             {
                 await _writer.WriteLineAsync(string.IsNullOrEmpty(argument)
-                    ? command.Command
-                    : $"{command.Command} {argument}");
+                    ? commandFactory.Command
+                    : $"{commandFactory.Command} {argument}");
 
                 await _writer.FlushAsync();
             }
         }
 
         [Pure, CanBeNull]
-        public ICommand GetCommand([NotNull] string command)
+        public ICommandFactory GetCommand([NotNull] string command)
         {
             return _registeredCommands.FirstOrDefault(cmd =>
                 cmd.Command.Equals(command, StringComparison.InvariantCultureIgnoreCase));

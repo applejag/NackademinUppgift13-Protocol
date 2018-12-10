@@ -1,6 +1,6 @@
 ﻿namespace BattleshipProtocol.Protocol.Commands
 {
-    public class HelloCommand : ICommand
+    public class HelloCommand : ICommandFactory
     {
         /// <inheritdoc />
         public string Command { get; } = "HELO";

@@ -6,7 +6,7 @@ namespace BattleshipProtocol.Protocol
     public struct ReceivedCommand
     {
         [NotNull]
-        public ICommand Command { get; set; }
+        public ICommandFactory CommandFactory { get; set; }
 
         [CanBeNull]
         public string Argument { get; set; }
