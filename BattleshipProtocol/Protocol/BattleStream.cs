@@ -352,7 +352,7 @@ namespace BattleshipProtocol.Protocol
             if (commandTemplate is null)
                 throw new ArgumentNullException(nameof(commandTemplate));
 
-            if (!_registeredCommands.Contains(commandTemplate))
+            if (_registeredCommands.Contains(commandTemplate))
                 throw new ArgumentException(
                     $"Command {commandTemplate.Command.ToUpper()} is already registered.",
                     nameof(commandTemplate));
