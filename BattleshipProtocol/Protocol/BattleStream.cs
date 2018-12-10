@@ -254,6 +254,10 @@ namespace BattleshipProtocol.Protocol
             }
         }
 
+        /// <summary>
+        /// Gets first command by name via <see cref="ICommandTemplate.Command"/> (case insensitive). Returns null if no match.
+        /// </summary>
+        /// <param name="command">The command name to match.</param>
         [Pure, CanBeNull]
         public ICommandTemplate GetCommand([NotNull] string command)
         {
@@ -261,6 +265,10 @@ namespace BattleshipProtocol.Protocol
                 cmd.Command.Equals(command, StringComparison.InvariantCultureIgnoreCase));
         }
 
+        /// <summary>
+        /// Gets first command by type. Returns null if no match.
+        /// </summary>
+        /// <typeparam name="T">The command type to match.</typeparam>
         [Pure, CanBeNull]
         public T GetCommand<T>() where T : ICommandTemplate
         {
