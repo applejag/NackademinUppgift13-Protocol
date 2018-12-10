@@ -63,7 +63,7 @@
     <Compile Include="Protocol\Exceptions\ProtocolException.cs" />
     <Compile Include="Protocol\Exceptions\ProtocolUnknownCommandException.cs" />
     <Compile Include="Protocol\Exceptions\ProtocolUnknownResponseException.cs" />
-    <Compile Include="Protocol\Extensions\ThreadingExtensions.cs" />
+    <Compile Include="Protocol\Internal\Extensions\ThreadingExtensions.cs" />
     <Compile Include="Protocol\IPacket.cs" />
     <Compile Include="Protocol\ReceivedCommand.cs" />
     <Compile Include="Protocol\Response.cs" />
