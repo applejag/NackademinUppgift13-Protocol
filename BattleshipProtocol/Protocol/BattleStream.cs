@@ -20,6 +20,7 @@ namespace BattleshipProtocol.Protocol
         private readonly StreamWriter _writer;
 
         private readonly SemaphoreSlim _writerSemaphore = new SemaphoreSlim(1, 1);
+        private readonly SemaphoreSlim _readerSemaphore = new SemaphoreSlim(1, 1);
 
         private readonly Regex _commandRegex =
             new Regex(@"^([a-z]+)(?: (.*))?$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
@@ -31,7 +32,7 @@ namespace BattleshipProtocol.Protocol
 
         private readonly HashSet<IObserver<IPacket>> _packetObservers = new HashSet<IObserver<IPacket>>();
 
-        public bool ConnectionOpen { get; private set; }
+        public bool ConnectionOpen { get; private set; } = true;
 
         [NotNull, ItemNotNull]
         public IReadOnlyCollection<ICommandTemplate> RegisteredCommands => _registeredCommands;
@@ -132,19 +133,15 @@ namespace BattleshipProtocol.Protocol
         /// <exception cref="InvalidOperationException">Thrown if it's already listening.</exception>
         public async void BeginListening()
         {
-            if (!Monitor.TryEnter(_reader))
+            if (_readerSemaphore.CurrentCount == 0)
                 throw new InvalidOperationException("This stream is already listening.");
 
-            try
+            using (_readerSemaphore.EnterAsync())
             {
                 while (true)
                 {
                     await ReceiveAsync();
                 }
-            }
-            finally
-            {
-                Monitor.Exit(_reader);
             }
         }
 
@@ -198,23 +195,13 @@ namespace BattleshipProtocol.Protocol
             if (!ConnectionOpen)
                 throw new InvalidOperationException("Stream has closed!");
 
-            if (!Monitor.TryEnter(_reader))
-                throw new InvalidOperationException("This stream is already listening.");
+            string line = await ReadLineAsyncInternal();
 
-            try
-            {
-                string line = await ReadLineAsyncInternal();
+            if (!TryParseResponse(line, out Response response))
+                throw new ProtocolFormatException(line);
 
-                if (!TryParseResponse(line, out Response response))
-                    throw new ProtocolFormatException(line);
-
-                OnResponseReceived(response);
-                return response;
-            }
-            finally
-            {
-                Monitor.Exit(_reader);
-            }
+            OnResponseReceived(response);
+            return response;
         }
 
         [NotNull]
@@ -223,23 +210,13 @@ namespace BattleshipProtocol.Protocol
             if (!ConnectionOpen)
                 throw new InvalidOperationException("Stream has closed!");
 
-            if (!Monitor.TryEnter(_reader))
-                throw new InvalidOperationException("This stream is already listening.");
+            string line = await ReadLineAsyncInternal();
 
-            try
-            {
-                string line = await ReadLineAsyncInternal();
+            if (!TryParseCommand(line, out ReceivedCommand command))
+                throw new ProtocolFormatException(line);
 
-                if (!TryParseCommand(line, out ReceivedCommand command))
-                    throw new ProtocolFormatException(line);
-
-                OnCommandReceived(command);
-                return command;
-            }
-            finally
-            {
-                Monitor.Exit(_reader);
-            }
+            OnCommandReceived(command);
+            return command;
         }
 
         [NotNull, ItemCanBeNull]
