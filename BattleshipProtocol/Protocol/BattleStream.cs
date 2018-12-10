@@ -30,7 +30,7 @@ namespace BattleshipProtocol.Protocol
         public bool ConnectionOpen { get; private set; }
 
         [NotNull, ItemNotNull]
-        private readonly List<ICommandTemplate> _registeredCommands = new List<ICommandTemplate>();
+        private readonly HashSet<ICommandTemplate> _registeredCommands = new HashSet<ICommandTemplate>();
 
         [NotNull, ItemNotNull]
         private readonly HashSet<IObserver<IPacket>> _packetObservers = new HashSet<IObserver<IPacket>>();
@@ -223,6 +223,25 @@ namespace BattleshipProtocol.Protocol
         {
             return _registeredCommands.FirstOrDefault(cmd =>
                 cmd.Command.Equals(command, StringComparison.InvariantCultureIgnoreCase));
+        }
+
+        /// <summary>
+        /// Register a command template to listen for. Commands must be unique to their <see cref="ICommandTemplate.Command"/> property (case insensitive).
+        /// </summary>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="commandTemplate"/> is null.</exception>
+        /// <exception cref="ArgumentException">Thrown if <see cref="ICommandTemplate.Command">Command</see> property of <paramref name="commandTemplate"/> is already registered.</exception>
+        /// <param name="commandTemplate">The command template.</param>
+        public void RegisterCommand([NotNull] ICommandTemplate commandTemplate)
+        {
+            if (commandTemplate is null)
+                throw new ArgumentNullException(nameof(commandTemplate));
+
+            if (!_registeredCommands.Contains(commandTemplate))
+                throw new ArgumentException(
+                    $"Command {commandTemplate.Command.ToUpper()} is already registered.",
+                    nameof(commandTemplate));
+
+            _registeredCommands.Add(commandTemplate);
         }
 
         #endregion
