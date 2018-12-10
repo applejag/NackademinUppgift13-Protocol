@@ -59,6 +59,10 @@
     <Compile Include="Protocol\Commands\FireCommand.cs" />
     <Compile Include="Protocol\Commands\HelpCommand.cs" />
     <Compile Include="Protocol\Commands\StartCommand.cs" />
+    <Compile Include="Protocol\Exceptions\ProtocolFormatException.cs" />
+    <Compile Include="Protocol\Exceptions\ProtocolException.cs" />
+    <Compile Include="Protocol\Exceptions\ProtocolUnknownCommandException.cs" />
+    <Compile Include="Protocol\Exceptions\ProtocolUnknownResponseException.cs" />
     <Compile Include="Protocol\Extensions\ThreadingExtensions.cs" />
     <Compile Include="Protocol\IPacket.cs" />
     <Compile Include="Protocol\ReceivedCommand.cs" />
