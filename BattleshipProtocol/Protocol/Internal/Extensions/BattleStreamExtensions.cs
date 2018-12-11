@@ -13,7 +13,7 @@ namespace BattleshipProtocol.Protocol.Internal.Extensions
         {
             Response response = await EnsureResponse(stream, ResponseCode.VersionGreeting, timeout);
 
-            if (response.Message is null)
+            if (string.IsNullOrWhiteSpace(response.Message))
             {
                 throw new ProtocolException(ResponseCode.SyntaxError,
                     $"Missing version. Expected {version}.");

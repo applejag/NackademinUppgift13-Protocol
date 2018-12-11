@@ -49,18 +49,19 @@ namespace BattleshipProtocol
         /// <param name="address">Host name or IP address.</param>
         /// <param name="port">Host port.</param>
         /// <param name="playerName">The name of this player.</param>
+        /// <param name="timeout">Timeout in milliseconds for awaiting version handshake.</param>
         /// <exception cref="SocketException">An error occurred when accessing the socket.</exception>
         /// <exception cref="ArgumentNullException">The <paramref name="address"/> is not null.</exception>
         /// <exception cref="ProtocolException">Version handshake failed.</exception>
         [NotNull]
-        public static async Task<BattleGame> ConnectAsync([NotNull] string address, ushort port, [NotNull] string playerName)
+        public static async Task<BattleGame> ConnectAsync([NotNull] string address, ushort port, [NotNull] string playerName, int timeout = 10_000)
         {
             var tcp = new TcpClient();
 
             await tcp.ConnectAsync(address, port);
             var stream = new BattleStream(tcp.GetStream());
 
-            await stream.EnsureVersionGreeting(ProtocolVersion);
+            await stream.EnsureVersionGreeting(ProtocolVersion, timeout);
 
             stream.RegisterCommand(new FireCommand());
             stream.RegisterCommand(new HelloCommand());
@@ -83,6 +84,7 @@ namespace BattleshipProtocol
         /// </para>
         /// </summary>
         /// <param name="port">Host port.</param>
+        /// <param name="playerName">Name of the hosting player.</param>
         /// <exception cref="SocketException">An error occurred when accessing the socket.</exception>
         [NotNull]
         public static async Task<BattleGame> HostAndWaitAsync(ushort port, string playerName)

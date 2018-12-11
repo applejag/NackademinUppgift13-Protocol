@@ -62,14 +62,18 @@ namespace BattleshipProtocol.Protocol
         public BattleStream([NotNull] in Stream stream, [NotNull] in Encoding encoding)
         {
             _stream = stream;
-            _reader = new StreamReader(stream, encoding);
-            _writer = new StreamWriter(stream, encoding);
+
+            _reader = new StreamReader(stream, encoding, 
+                detectEncodingFromByteOrderMarks: true, bufferSize: 1024, leaveOpen: true);
+
+            _writer = new StreamWriter(stream, encoding, 
+                bufferSize: 1024, leaveOpen: true);
         }
 
         #region Readers and writers of protocol types
 
         [Pure]
-        private bool TryParseResponse(in string source, out Response response)
+        private bool TryParseResponse([NotNull] in string source, out Response response)
         {
             response = default;
 
@@ -100,7 +104,7 @@ namespace BattleshipProtocol.Protocol
         }
 
         [Pure]
-        private bool TryParseCommand(in string source, out ReceivedCommand command)
+        private bool TryParseCommand([NotNull] in string source, out ReceivedCommand command)
         {
             command = default;
 
@@ -219,10 +223,13 @@ namespace BattleshipProtocol.Protocol
 
             if (_readerSemaphore.CurrentCount == 0)
                 throw new InvalidOperationException("Stream has closed!");
-
+            
             using (await _readerSemaphore.EnterAsync())
             {
                 string line = await ReadLineAsyncInternal();
+
+                if (line is null)
+                    throw new ProtocolUnexpectedDisconnect();
 
                 if (!TryParseResponse(line, out Response response))
                     throw new ProtocolFormatException(line);
@@ -261,6 +268,9 @@ namespace BattleshipProtocol.Protocol
             {
                 string line = await ReadLineAsyncInternal();
 
+                if (line is null)
+                    throw new ProtocolUnexpectedDisconnect();
+
                 if (!TryParseCommand(line, out ReceivedCommand command))
                     throw new ProtocolFormatException(line);
 
@@ -272,14 +282,19 @@ namespace BattleshipProtocol.Protocol
         [NotNull, ItemCanBeNull]
         private async Task<string> ReadLineAsyncInternal()
         {
-            string line = await _reader.ReadLineAsync();
+            string line;
+
+            try
+            {
+                line = await _reader.ReadLineAsync();
+            }
+            catch
+            {
+                line = null;
+            }
 
             if (line is null)
-            {
-                ConnectionOpen = false;
-                OnStreamClosed();
-                return null;
-            }
+                Dispose();
 
             return line;
         }
@@ -414,10 +429,21 @@ namespace BattleshipProtocol.Protocol
 
         public void Dispose()
         {
-            _stream.Dispose();
+            if (!ConnectionOpen) return;
+            
+            ConnectionOpen = false;
+            OnStreamClosed();
+
             _reader.Dispose();
-            _writer.Dispose();
-            _writerSemaphore.Dispose();
+            _stream.Dispose();
+            try
+            {
+                _writer.Dispose();
+            }
+            catch
+            {
+                // StreamWriter is a beach
+            }
         }
 
         protected virtual void OnError(in Exception error)
