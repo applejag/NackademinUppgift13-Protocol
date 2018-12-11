@@ -37,7 +37,7 @@ namespace BattleshipProtocol.Protocol.Internal.Extensions
             catch (ProtocolException error)
             {
                 throw new ProtocolException(error.ErrorCode,
-                    $"{error.ErrorMessage} Expected {(short)code}.");
+                    $"{error.ErrorMessage} Expected {(short)code}.", error);
             }
 
             if (response.Code != code)

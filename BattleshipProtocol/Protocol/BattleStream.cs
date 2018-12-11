@@ -136,9 +136,9 @@ namespace BattleshipProtocol.Protocol
             if (_readerSemaphore.CurrentCount == 0)
                 throw new InvalidOperationException("This stream is already listening.");
 
-            using (_readerSemaphore.EnterAsync())
+            using (await _readerSemaphore.EnterAsync())
             {
-                while (true)
+                while (ConnectionOpen)
                 {
                     await ReceiveAsync();
                 }
@@ -244,7 +244,7 @@ namespace BattleshipProtocol.Protocol
             if (!ConnectionOpen)
                 throw new InvalidOperationException("Stream has closed!");
 
-            using (_writerSemaphore.EnterAsync())
+            using (await _writerSemaphore.EnterAsync())
             {
                 foreach (string line in text.Split(new[] { "\n\r", "\r\n", "\r", "\n" }, StringSplitOptions.None))
                 {
@@ -264,7 +264,7 @@ namespace BattleshipProtocol.Protocol
             if (!ConnectionOpen)
                 throw new InvalidOperationException("Stream has closed!");
 
-            using (_writerSemaphore.EnterAsync())
+            using (await _writerSemaphore.EnterAsync())
             {
                 await _writer.WriteLineAsync($"{(short)error.ErrorCode} {error.ErrorMessage}");
                 await _writer.FlushAsync();
@@ -281,7 +281,7 @@ namespace BattleshipProtocol.Protocol
             if (!ConnectionOpen)
                 throw new InvalidOperationException("Stream has closed!");
 
-            using (_writerSemaphore.EnterAsync())
+            using (await _writerSemaphore.EnterAsync())
             {
                 await _writer.WriteLineAsync(response.ToString());
                 await _writer.FlushAsync();
@@ -310,7 +310,7 @@ namespace BattleshipProtocol.Protocol
 
         private async Task SendCommandAsyncInternal([NotNull] ICommandTemplate commandTemplate, [CanBeNull] string argument)
         {
-            using (_writerSemaphore.EnterAsync())
+            using (await _writerSemaphore.EnterAsync())
             {
                 await _writer.WriteLineAsync(string.IsNullOrEmpty(argument)
                     ? commandTemplate.Command

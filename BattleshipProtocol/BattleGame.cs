@@ -20,6 +20,9 @@ namespace BattleshipProtocol
         public string PlayerName { get; }
         public string OpponentName { get; private set; }
 
+        public IObservable<IPacket> PacketProvider => _stream;
+
+        public bool IsConnected => _stream.ConnectionOpen;
         public EndPoint RemoteEndPoint => _client.Client.RemoteEndPoint;
 
         private BattleGame(TcpClient client, BattleStream stream, string playerName, bool isHost)
@@ -27,6 +30,8 @@ namespace BattleshipProtocol
             IsHost = isHost;
             _client = client;
             _stream = stream;
+
+            _stream.BeginListening();
         }
 
         /// <summary>

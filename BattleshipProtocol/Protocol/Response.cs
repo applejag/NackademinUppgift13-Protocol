@@ -10,5 +10,12 @@ namespace BattleshipProtocol.Protocol
 
         [CanBeNull]
         public string Message { get; set; }
+
+        public override string ToString()
+        {
+            return string.IsNullOrEmpty(Message)
+                ? $"{(short) Code}"
+                : $"{(short) Code} {Message}";
+        }
     }
 }
