@@ -37,12 +37,18 @@ namespace BattleshipProtocol.Protocol
         [NotNull, ItemNotNull]
         public IReadOnlyCollection<ICommandTemplate> RegisteredCommands => _registeredCommands;
 
+        public int ReadTimeout
+        {
+            get => _stream.ReadTimeout;
+            set => _stream.ReadTimeout = value;
+        }
+
         /// <inheritdoc />
         /// <summary>
         /// Initializes the Battleship commands stream with encoding <see cref="P:System.Text.Encoding.UTF8" />
         /// </summary>
         /// <param name="stream">The stream to use when reading and writing data.</param>
-        public BattleStream([NotNull] Stream stream)
+        public BattleStream([NotNull] in Stream stream)
             : this(stream, Encoding.UTF8)
         {
         }
@@ -53,7 +59,7 @@ namespace BattleshipProtocol.Protocol
         /// </summary>
         /// <param name="stream">The stream to use when reading and writing data.</param>
         /// <param name="encoding">The encoding to use when reading and writing data.</param>
-        public BattleStream([NotNull] Stream stream, [NotNull] Encoding encoding)
+        public BattleStream([NotNull] in Stream stream, [NotNull] in Encoding encoding)
         {
             _stream = stream;
             _reader = new StreamReader(stream, encoding);
@@ -63,7 +69,7 @@ namespace BattleshipProtocol.Protocol
         #region Readers and writers of protocol types
 
         [Pure]
-        private bool TryParseResponse(string source, out Response response)
+        private bool TryParseResponse(in string source, out Response response)
         {
             response = default;
 
@@ -94,7 +100,7 @@ namespace BattleshipProtocol.Protocol
         }
 
         [Pure]
-        private bool TryParseCommand(string source, out ReceivedCommand command)
+        private bool TryParseCommand(in string source, out ReceivedCommand command)
         {
             command = default;
 
@@ -140,7 +146,7 @@ namespace BattleshipProtocol.Protocol
             {
                 while (ConnectionOpen)
                 {
-                    await ReceiveAsync();
+                    await ReceiveAsyncInternal();
                 }
             }
         }
@@ -151,7 +157,7 @@ namespace BattleshipProtocol.Protocol
         /// </summary>
         /// <exception cref="InvalidOperationException">Thrown if the connection has been closed.</exception>
         [NotNull]
-        private async Task ReceiveAsync()
+        private async Task ReceiveAsyncInternal()
         {
             if (!ConnectionOpen)
                 throw new InvalidOperationException("Stream has closed!");
@@ -163,15 +169,15 @@ namespace BattleshipProtocol.Protocol
                 if (line is null)
                     return;
 
-                if (TryParseResponse(line, out Response response))
+                if (TryParseResponse(in line, out Response response))
                 {
-                    OnResponseReceived(response);
+                    OnResponseReceived(in response);
                     return;
                 }
 
-                if (TryParseCommand(line, out ReceivedCommand command))
+                if (TryParseCommand(in line, out ReceivedCommand command))
                 {
-                    OnCommandReceived(command);
+                    OnCommandReceived(in command);
                     return;
                 }
 
@@ -185,7 +191,23 @@ namespace BattleshipProtocol.Protocol
             }
             catch (Exception unexpected)
             {
-                OnError(unexpected);
+                OnError(in unexpected);
+            }
+        }
+
+        [NotNull]
+        public Task<Response> ExpectResponseAsync(in int timeoutOverride)
+        {
+            int oldTimeout = _stream.ReadTimeout;
+            _stream.ReadTimeout = timeoutOverride;
+
+            try
+            {
+                return ExpectResponseAsync();
+            }
+            finally
+            {
+                _stream.ReadTimeout = oldTimeout;
             }
         }
 
@@ -195,13 +217,35 @@ namespace BattleshipProtocol.Protocol
             if (!ConnectionOpen)
                 throw new InvalidOperationException("Stream has closed!");
 
-            string line = await ReadLineAsyncInternal();
+            if (_readerSemaphore.CurrentCount == 0)
+                throw new InvalidOperationException("Stream has closed!");
 
-            if (!TryParseResponse(line, out Response response))
-                throw new ProtocolFormatException(line);
+            using (await _readerSemaphore.EnterAsync())
+            {
+                string line = await ReadLineAsyncInternal();
 
-            OnResponseReceived(response);
-            return response;
+                if (!TryParseResponse(line, out Response response))
+                    throw new ProtocolFormatException(line);
+
+                OnResponseReceived(response);
+                return response;
+            }
+        }
+
+        [NotNull]
+        public Task<ReceivedCommand> ExpectCommandAsync(in int timeoutOverride)
+        {
+            int oldTimeout = _stream.ReadTimeout;
+            _stream.ReadTimeout = timeoutOverride;
+
+            try
+            {
+                return ExpectCommandAsync();
+            }
+            finally
+            {
+                _stream.ReadTimeout = oldTimeout;
+            }
         }
 
         [NotNull]
@@ -210,13 +254,19 @@ namespace BattleshipProtocol.Protocol
             if (!ConnectionOpen)
                 throw new InvalidOperationException("Stream has closed!");
 
-            string line = await ReadLineAsyncInternal();
+            if (_readerSemaphore.CurrentCount == 0)
+                throw new InvalidOperationException("Stream has closed!");
 
-            if (!TryParseCommand(line, out ReceivedCommand command))
-                throw new ProtocolFormatException(line);
+            using (await _readerSemaphore.EnterAsync())
+            {
+                string line = await ReadLineAsyncInternal();
 
-            OnCommandReceived(command);
-            return command;
+                if (!TryParseCommand(line, out ReceivedCommand command))
+                    throw new ProtocolFormatException(line);
+
+                OnCommandReceived(command);
+                return command;
+            }
         }
 
         [NotNull, ItemCanBeNull]
@@ -370,7 +420,7 @@ namespace BattleshipProtocol.Protocol
             _writerSemaphore.Dispose();
         }
 
-        protected virtual void OnError(Exception error)
+        protected virtual void OnError(in Exception error)
         {
             foreach (IObserver<IPacket> observer in _packetObservers)
             {
@@ -378,7 +428,7 @@ namespace BattleshipProtocol.Protocol
             }
         }
 
-        protected virtual void OnCommandReceived(ReceivedCommand packet)
+        protected virtual void OnCommandReceived(in ReceivedCommand packet)
         {
             foreach (IObserver<IPacket> observer in _packetObservers)
             {
@@ -386,7 +436,7 @@ namespace BattleshipProtocol.Protocol
             }
         }
 
-        protected virtual void OnResponseReceived(Response packet)
+        protected virtual void OnResponseReceived(in Response packet)
         {
             foreach (IObserver<IPacket> observer in _packetObservers)
             {

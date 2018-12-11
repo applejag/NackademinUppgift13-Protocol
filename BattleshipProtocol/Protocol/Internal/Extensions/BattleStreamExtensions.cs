@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading;
 using System.Threading.Tasks;
 using BattleshipProtocol.Protocol.Exceptions;
 using JetBrains.Annotations;
@@ -8,9 +9,9 @@ namespace BattleshipProtocol.Protocol.Internal.Extensions
     public static class BattleStreamExtensions
     {
         [NotNull]
-        public static async Task EnsureVersionGreeting(this BattleStream stream, string version)
+        public static async Task EnsureVersionGreeting(this BattleStream stream, string version, int timeout = Timeout.Infinite)
         {
-            Response response = await EnsureResponse(stream, ResponseCode.VersionGreeting);
+            Response response = await EnsureResponse(stream, ResponseCode.VersionGreeting, timeout);
 
             if (response.Message is null)
             {
@@ -26,13 +27,13 @@ namespace BattleshipProtocol.Protocol.Internal.Extensions
         }
 
         [NotNull]
-        public static async Task<Response> EnsureResponse(this BattleStream stream, ResponseCode code)
+        public static async Task<Response> EnsureResponse(this BattleStream stream, ResponseCode code, int timeout = Timeout.Infinite)
         {
             Response response;
 
             try
             {
-                response = await stream.ExpectResponseAsync();
+                response = await stream.ExpectResponseAsync(timeout);
             }
             catch (ProtocolException error)
             {
