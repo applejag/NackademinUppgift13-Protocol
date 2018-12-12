@@ -19,6 +19,18 @@ namespace BattleshipProtocol.Protocol.Internal.Extensions
             return new DisposableSemaphoreEnter(semaphore);
         }
 
+        /// <summary>
+        /// Wait to enter the semaphore, then returns a disposable object that releases from the semaphore when disposed.
+        /// Meant to be used in a using() {} block.
+        /// </summary>
+        /// <param name="semaphore">The semaphore.</param>
+        [NotNull, MustUseReturnValue]
+        public static IDisposable Enter([NotNull] this SemaphoreSlim semaphore)
+        {
+            semaphore.Wait();
+            return new DisposableSemaphoreEnter(semaphore);
+        }
+
         private class DisposableSemaphoreEnter : IDisposable
         {
             private readonly SemaphoreSlim _semaphore;

@@ -16,23 +16,24 @@ namespace BattleshipProtocol
         public const string ProtocolVersion = "BATTLESHIP/1.0";
 
         private readonly TcpClient _client;
-        private readonly StreamConnection _stream;
+        private readonly StreamConnection _connection;
+
         public bool IsHost { get; }
         public string PlayerName { get; }
         public string OpponentName { get; private set; }
 
-        public IObservable<IPacket> PacketProvider => _stream;
+        public PacketService PacketService { get; }
 
-        public bool IsConnected => _stream.ConnectionOpen;
         public EndPoint RemoteEndPoint => _client.Client.RemoteEndPoint;
 
-        private BattleGame(TcpClient client, StreamConnection stream, string playerName, bool isHost)
+        private BattleGame(TcpClient client, StreamConnection connection, PacketService packetService, string playerName, bool isHost)
         {
             IsHost = isHost;
             _client = client;
-            _stream = stream;
+            _connection = connection;
+            PacketService = packetService;
 
-            _stream.BeginListening();
+            PacketService.BeginListening();
         }
 
         /// <summary>
@@ -55,24 +56,26 @@ namespace BattleshipProtocol
         /// <exception cref="ArgumentNullException">The <paramref name="address"/> is not null.</exception>
         /// <exception cref="ProtocolException">Version handshake failed.</exception>
         [NotNull]
-        public static async Task<BattleGame> ConnectAsync([NotNull] string address, ushort port, [NotNull] string playerName, int timeout = 10_000)
+        public static async Task<BattleGame> ConnectAsync([NotNull] string address, ushort port, 
+            [NotNull] string playerName, int timeout = 10_000)
         {
             var tcp = new TcpClient();
 
             await tcp.ConnectAsync(address, port);
-            var stream = new StreamConnection(tcp.GetStream());
+            var connection = new StreamConnection(tcp.GetStream());
+            var packetService = new PacketService(connection);
 
-            await stream.EnsureVersionGreeting(ProtocolVersion, timeout);
+            await packetService.EnsureVersionGreeting(ProtocolVersion, timeout);
 
-            stream.RegisterCommand(new FireCommand());
-            stream.RegisterCommand(new HelloCommand());
-            stream.RegisterCommand(new HelpCommand());
-            stream.RegisterCommand(new StartCommand());
-            stream.RegisterCommand(new QuitCommand());
+            packetService.RegisterCommand(new FireCommand());
+            packetService.RegisterCommand(new HelloCommand());
+            packetService.RegisterCommand(new HelpCommand());
+            packetService.RegisterCommand(new StartCommand());
+            packetService.RegisterCommand(new QuitCommand());
 
-            await stream.SendCommandAsync<HelloCommand>(playerName);
+            await packetService.SendCommandAsync<HelloCommand>(playerName);
 
-            return new BattleGame(tcp, stream, playerName, isHost: false);
+            return new BattleGame(tcp, connection, packetService, playerName, isHost: false);
         }
 
         /// <summary>
@@ -96,21 +99,22 @@ namespace BattleshipProtocol
                 listener.Start();
 
                 TcpClient tcp = await listener.AcceptTcpClientAsync();
-                var stream = new StreamConnection(tcp.GetStream());
+                var connection = new StreamConnection(tcp.GetStream());
+                var packetService = new PacketService(connection);
 
-                await stream.SendResponseAsync(new Response
+                await connection.SendResponseAsync(new Response
                 {
                     Code = ResponseCode.VersionGreeting,
                     Message = ProtocolVersion
                 });
                 
-                stream.RegisterCommand(new FireCommand());
-                stream.RegisterCommand(new HelloCommand());
-                stream.RegisterCommand(new HelpCommand());
-                stream.RegisterCommand(new StartCommand());
-                stream.RegisterCommand(new QuitCommand());
+                packetService.RegisterCommand(new FireCommand());
+                packetService.RegisterCommand(new HelloCommand());
+                packetService.RegisterCommand(new HelpCommand());
+                packetService.RegisterCommand(new StartCommand());
+                packetService.RegisterCommand(new QuitCommand());
 
-                return new BattleGame(tcp, stream, playerName, true);
+                return new BattleGame(tcp, connection, packetService, playerName, true);
             }
             finally
             {
@@ -126,7 +130,8 @@ namespace BattleshipProtocol
         public virtual void Dispose()
         {
             _client.Dispose();
-            _stream.Dispose();
+            _connection.Dispose();
+            PacketService.Dispose();
         }
     }
 }
