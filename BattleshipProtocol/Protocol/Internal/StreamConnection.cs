@@ -13,7 +13,7 @@ using JetBrains.Annotations;
 
 namespace BattleshipProtocol.Protocol.Internal
 {
-    internal class StreamConnection : IDisposable, IObservable<string>
+    public class StreamConnection : IDisposable, IObservable<string>
     {
         private readonly Stream _stream;
         private readonly StreamReader _reader;
@@ -26,7 +26,7 @@ namespace BattleshipProtocol.Protocol.Internal
         private CancellationTokenSource _listenCancellationTokenSource;
 
         public bool ConnectionOpen { get; private set; } = true;
-        public bool IsListening => _listenCancellationTokenSource != null;
+        public bool IsConnected => _listenCancellationTokenSource != null;
 
         public int ReadTimeout
         {
@@ -36,7 +36,7 @@ namespace BattleshipProtocol.Protocol.Internal
 
         /// <inheritdoc />
         /// <summary>
-        /// Initializes the Battleship commands stream with encoding <see cref="P:System.Text.Encoding.UTF8" />
+        /// Initializes the stream connection with <see cref="Encoding.UTF8"/> encoding.
         /// </summary>
         /// <param name="stream">The stream to use when reading and writing data.</param>
         public StreamConnection([NotNull] in Stream stream)
@@ -44,9 +44,8 @@ namespace BattleshipProtocol.Protocol.Internal
         {
         }
 
-        /// <inheritdoc />
         /// <summary>
-        /// Initializes the Battleship commands stream with custom encoding.
+        /// Initializes the stream connection with custom encoding.
         /// </summary>
         /// <param name="stream">The stream to use when reading and writing data.</param>
         /// <param name="encoding">The encoding to use when reading and writing data.</param>
@@ -124,15 +123,16 @@ namespace BattleshipProtocol.Protocol.Internal
         }
 
         /// <summary>
-        /// Waits and returns one line of text. This bypasses the <see cref="Subscribe"/> pattern.
+        /// Waits and returns one line of text. This bypasses the <see cref="IObservable{T}.Subscribe"/> pattern.
         /// </summary>
         /// <exception cref="InvalidOperationException">Thrown if the connection has been closed.</exception>
+        /// <exception cref="InvalidOperationException">Thrown if <see cref="BeginListening"/> is running.</exception>
         public string ReadLine()
         {
             if (!ConnectionOpen)
                 throw new InvalidOperationException("Stream has closed!");
 
-            if (IsListening)
+            if (IsConnected)
                 throw new InvalidOperationException("Stream is already being read by " + nameof(BeginListening) + ".");
 
             return _reader.ReadLine();
@@ -198,7 +198,7 @@ namespace BattleshipProtocol.Protocol.Internal
         /// <param name="commandTemplate">The command to transmit.</param>
         /// <param name="argument">The optional argument.</param>
         /// <exception cref="InvalidOperationException">Thrown if the connection has been closed.</exception>
-        public async Task SendCommandAsync([NotNull] ICommandTemplate commandTemplate, [CanBeNull] string argument)
+        protected async Task SendCommandAsync([NotNull] ICommandTemplate commandTemplate, [CanBeNull] string argument)
         {
             if (!ConnectionOpen)
                 throw new InvalidOperationException("Stream has closed!");
@@ -215,7 +215,7 @@ namespace BattleshipProtocol.Protocol.Internal
 
         #endregion
 
-        public void Dispose()
+        public virtual void Dispose()
         {
             if (!ConnectionOpen) return;
 
@@ -258,7 +258,7 @@ namespace BattleshipProtocol.Protocol.Internal
             }
         }
 
-        public IDisposable Subscribe(IObserver<string> observer)
+        IDisposable IObservable<string>.Subscribe(IObserver<string> observer)
         {
             if (observer is null)
                 throw new ArgumentNullException(nameof(observer));

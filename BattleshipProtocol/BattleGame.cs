@@ -22,18 +22,18 @@ namespace BattleshipProtocol
         public string PlayerName { get; }
         public string OpponentName { get; private set; }
 
-        public PacketService PacketService { get; }
+        public PacketConnection PacketConnection { get; }
 
         public EndPoint RemoteEndPoint => _client.Client.RemoteEndPoint;
 
-        private BattleGame(TcpClient client, StreamConnection connection, PacketService packetService, string playerName, bool isHost)
+        private BattleGame(TcpClient client, StreamConnection connection, PacketConnection packetConnection, string playerName, bool isHost)
         {
             IsHost = isHost;
             _client = client;
             _connection = connection;
-            PacketService = packetService;
+            PacketConnection = packetConnection;
 
-            PacketService.BeginListening();
+            PacketConnection.BeginListening();
         }
 
         /// <summary>
@@ -62,20 +62,19 @@ namespace BattleshipProtocol
             var tcp = new TcpClient();
 
             await tcp.ConnectAsync(address, port);
-            var connection = new StreamConnection(tcp.GetStream());
-            var packetService = new PacketService(connection);
+            var connection = new PacketConnection(tcp.GetStream());
 
-            await packetService.EnsureVersionGreeting(ProtocolVersion, timeout);
+            await connection.EnsureVersionGreeting(ProtocolVersion, timeout);
 
-            packetService.RegisterCommand(new FireCommand());
-            packetService.RegisterCommand(new HelloCommand());
-            packetService.RegisterCommand(new HelpCommand());
-            packetService.RegisterCommand(new StartCommand());
-            packetService.RegisterCommand(new QuitCommand());
+            connection.RegisterCommand(new FireCommand());
+            connection.RegisterCommand(new HelloCommand());
+            connection.RegisterCommand(new HelpCommand());
+            connection.RegisterCommand(new StartCommand());
+            connection.RegisterCommand(new QuitCommand());
 
-            await packetService.SendCommandAsync<HelloCommand>(playerName);
+            await connection.SendCommandAsync<HelloCommand>(playerName);
 
-            return new BattleGame(tcp, connection, packetService, playerName, isHost: false);
+            return new BattleGame(tcp, connection, connection, playerName, isHost: false);
         }
 
         /// <summary>
@@ -99,8 +98,7 @@ namespace BattleshipProtocol
                 listener.Start();
 
                 TcpClient tcp = await listener.AcceptTcpClientAsync();
-                var connection = new StreamConnection(tcp.GetStream());
-                var packetService = new PacketService(connection);
+                var connection = new PacketConnection(tcp.GetStream());
 
                 await connection.SendResponseAsync(new Response
                 {
@@ -108,13 +106,13 @@ namespace BattleshipProtocol
                     Message = ProtocolVersion
                 });
                 
-                packetService.RegisterCommand(new FireCommand());
-                packetService.RegisterCommand(new HelloCommand());
-                packetService.RegisterCommand(new HelpCommand());
-                packetService.RegisterCommand(new StartCommand());
-                packetService.RegisterCommand(new QuitCommand());
+                connection.RegisterCommand(new FireCommand());
+                connection.RegisterCommand(new HelloCommand());
+                connection.RegisterCommand(new HelpCommand());
+                connection.RegisterCommand(new StartCommand());
+                connection.RegisterCommand(new QuitCommand());
 
-                return new BattleGame(tcp, connection, packetService, playerName, true);
+                return new BattleGame(tcp, connection, connection, playerName, true);
             }
             finally
             {
@@ -131,7 +129,6 @@ namespace BattleshipProtocol
         {
             _client.Dispose();
             _connection.Dispose();
-            PacketService.Dispose();
         }
     }
 }

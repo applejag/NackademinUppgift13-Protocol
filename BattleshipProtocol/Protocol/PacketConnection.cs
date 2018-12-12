@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using BattleshipProtocol.Protocol.Exceptions;
@@ -9,7 +11,7 @@ using JetBrains.Annotations;
 
 namespace BattleshipProtocol.Protocol
 {
-    public class PacketService : IObservable<IPacket>, IObserver<string>, IDisposable
+    public class PacketConnection : StreamConnection, IObservable<IPacket>
     {
         private readonly Regex _commandRegex =
             new Regex(@"^([a-z]+)(?: (.*))?$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
@@ -21,22 +23,25 @@ namespace BattleshipProtocol.Protocol
 
         private readonly HashSet<IObserver<IPacket>> _packetObservers = new HashSet<IObserver<IPacket>>();
 
-        private readonly IDisposable _streamUnsubscriber;
-        private readonly StreamConnection _connection;
-
         [NotNull, ItemNotNull]
         public IReadOnlyCollection<ICommandTemplate> RegisteredCommands => _registeredCommands;
-        public bool IsConnected => _connection.ConnectionOpen;
 
-        internal PacketService(StreamConnection connection)
+        /// <inheritdoc/>
+        /// <summary>
+        /// Initializes the Battleship packets connection with <see cref="Encoding.UTF8"/> encoding.
+        /// </summary>
+        public PacketConnection([NotNull] in Stream stream)
+            : base(in stream)
         {
-            _streamUnsubscriber = connection.Subscribe(this);
-            _connection = connection;
         }
 
-        public void BeginListening()
+        /// <inheritdoc/>
+        /// <summary>
+        /// Initializes the Battleship packets connection with custom encoding.
+        /// </summary>
+        public PacketConnection([NotNull] in Stream stream, [NotNull] in Encoding encoding)
+            : base(in stream, in encoding)
         {
-            _connection.BeginListening();
         }
 
         [Pure]
@@ -106,8 +111,8 @@ namespace BattleshipProtocol.Protocol
         [NotNull]
         public Task<Response> ExpectResponseAsync(in int timeoutOverride)
         {
-            int oldTimeout = _connection.ReadTimeout;
-            _connection.ReadTimeout = timeoutOverride;
+            int oldTimeout = ReadTimeout;
+            ReadTimeout = timeoutOverride;
 
             try
             {
@@ -115,7 +120,7 @@ namespace BattleshipProtocol.Protocol
             }
             finally
             {
-                _connection.ReadTimeout = oldTimeout;
+                ReadTimeout = oldTimeout;
             }
         }
 
@@ -147,8 +152,8 @@ namespace BattleshipProtocol.Protocol
         [NotNull]
         public Task<ReceivedCommand> ExpectCommandAsync(in int timeoutOverride)
         {
-            int oldTimeout = _connection.ReadTimeout;
-            _connection.ReadTimeout = timeoutOverride;
+            int oldTimeout = ReadTimeout;
+            ReadTimeout = timeoutOverride;
 
             try
             {
@@ -156,7 +161,7 @@ namespace BattleshipProtocol.Protocol
             }
             finally
             {
-                _connection.ReadTimeout = oldTimeout;
+                ReadTimeout = oldTimeout;
             }
         }
 
@@ -239,11 +244,11 @@ namespace BattleshipProtocol.Protocol
             if (commandTemplate is null)
                 throw new ArgumentException($"Command {typeof(T).Name} is not registered for this stream.", nameof(T));
 
-            await _connection.SendCommandAsync(commandTemplate, argument);
+            await SendCommandAsync(commandTemplate, argument);
         }
 
 
-        protected virtual void OnError(in Exception error)
+        protected virtual void OnPacketError(in Exception error)
         {
             foreach (IObserver<IPacket> observer in _packetObservers)
             {
@@ -267,8 +272,10 @@ namespace BattleshipProtocol.Protocol
             }
         }
 
-        protected virtual void OnStreamClosed()
+        protected override void OnStreamClosed()
         {
+            base.OnStreamClosed();
+
             foreach (IObserver<IPacket> observer in _packetObservers)
             {
                 observer.OnCompleted();
@@ -307,37 +314,13 @@ namespace BattleshipProtocol.Protocol
             }
             catch (ProtocolException error)
             {
-                await _connection.SendErrorAsync(error);
-                OnError(error);
+                await SendErrorAsync(error);
+                OnPacketError(error);
             }
             catch (Exception unexpected)
             {
-                OnError(in unexpected);
+                OnPacketError(in unexpected);
             }
-        }
-
-        #region StreamConnection observing implementation
-
-        void IObserver<string>.OnNext(string value)
-        {
-            ParsePacketAsync(value);
-        }
-
-        void IObserver<string>.OnError(Exception error)
-        {
-            throw new NotImplementedException();
-        }
-
-        void IObserver<string>.OnCompleted()
-        {
-            throw new NotImplementedException();
-        }
-
-        #endregion
-
-        public void Dispose()
-        {
-            _streamUnsubscriber.Dispose();
         }
     }
 }
