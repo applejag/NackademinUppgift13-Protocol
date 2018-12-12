@@ -7,13 +7,12 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using BattleshipProtocol.Protocol.Exceptions;
-using BattleshipProtocol.Protocol.Internal;
 using BattleshipProtocol.Protocol.Internal.Extensions;
 using JetBrains.Annotations;
 
-namespace BattleshipProtocol.Protocol
+namespace BattleshipProtocol.Protocol.Internal
 {
-    public class BattleStream : IDisposable, IObservable<IPacket>
+    internal class StreamConnection : IDisposable, IObservable<IPacket>
     {
         private readonly Stream _stream;
         private readonly StreamReader _reader;
@@ -48,7 +47,7 @@ namespace BattleshipProtocol.Protocol
         /// Initializes the Battleship commands stream with encoding <see cref="P:System.Text.Encoding.UTF8" />
         /// </summary>
         /// <param name="stream">The stream to use when reading and writing data.</param>
-        public BattleStream([NotNull] in Stream stream)
+        public StreamConnection([NotNull] in Stream stream)
             : this(stream, Encoding.UTF8)
         {
         }
@@ -59,7 +58,7 @@ namespace BattleshipProtocol.Protocol
         /// </summary>
         /// <param name="stream">The stream to use when reading and writing data.</param>
         /// <param name="encoding">The encoding to use when reading and writing data.</param>
-        public BattleStream([NotNull] in Stream stream, [NotNull] in Encoding encoding)
+        public StreamConnection([NotNull] in Stream stream, [NotNull] in Encoding encoding)
         {
             _stream = stream;
 

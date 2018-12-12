@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using BattleshipProtocol.Game.Commands;
 using BattleshipProtocol.Protocol;
 using BattleshipProtocol.Protocol.Exceptions;
+using BattleshipProtocol.Protocol.Internal;
 using BattleshipProtocol.Protocol.Internal.Extensions;
 using JetBrains.Annotations;
 
@@ -15,7 +16,7 @@ namespace BattleshipProtocol
         public const string ProtocolVersion = "BATTLESHIP/1.0";
 
         private readonly TcpClient _client;
-        private readonly BattleStream _stream;
+        private readonly StreamConnection _stream;
         public bool IsHost { get; }
         public string PlayerName { get; }
         public string OpponentName { get; private set; }
@@ -25,7 +26,7 @@ namespace BattleshipProtocol
         public bool IsConnected => _stream.ConnectionOpen;
         public EndPoint RemoteEndPoint => _client.Client.RemoteEndPoint;
 
-        private BattleGame(TcpClient client, BattleStream stream, string playerName, bool isHost)
+        private BattleGame(TcpClient client, StreamConnection stream, string playerName, bool isHost)
         {
             IsHost = isHost;
             _client = client;
@@ -59,7 +60,7 @@ namespace BattleshipProtocol
             var tcp = new TcpClient();
 
             await tcp.ConnectAsync(address, port);
-            var stream = new BattleStream(tcp.GetStream());
+            var stream = new StreamConnection(tcp.GetStream());
 
             await stream.EnsureVersionGreeting(ProtocolVersion, timeout);
 
@@ -95,7 +96,7 @@ namespace BattleshipProtocol
                 listener.Start();
 
                 TcpClient tcp = await listener.AcceptTcpClientAsync();
-                var stream = new BattleStream(tcp.GetStream());
+                var stream = new StreamConnection(tcp.GetStream());
 
                 await stream.SendResponseAsync(new Response
                 {
