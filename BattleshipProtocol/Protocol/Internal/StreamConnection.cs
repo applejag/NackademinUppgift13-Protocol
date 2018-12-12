@@ -127,6 +127,7 @@ namespace BattleshipProtocol.Protocol.Internal
         /// </summary>
         /// <exception cref="InvalidOperationException">Thrown if the connection has been closed.</exception>
         /// <exception cref="InvalidOperationException">Thrown if <see cref="BeginListening"/> is running.</exception>
+        [CanBeNull]
         public string ReadLine()
         {
             if (!ConnectionOpen)
@@ -139,10 +140,28 @@ namespace BattleshipProtocol.Protocol.Internal
         }
 
         /// <summary>
+        /// Waits and returns one line of text. This bypasses the <see cref="IObservable{T}.Subscribe"/> pattern.
+        /// </summary>
+        /// <exception cref="InvalidOperationException">Thrown if the connection has been closed.</exception>
+        /// <exception cref="InvalidOperationException">Thrown if <see cref="BeginListening"/> is running.</exception>
+        [NotNull, ItemCanBeNull]
+        public async Task<string> ReadLineAsync()
+        {
+            if (!ConnectionOpen)
+                throw new InvalidOperationException("Stream has closed!");
+
+            if (IsConnected)
+                throw new InvalidOperationException("Stream is already being read by " + nameof(BeginListening) + ".");
+
+            return await _reader.ReadLineAsync();
+        }
+
+        /// <summary>
         /// Send a textblock (asynchronously) to the other client.
         /// </summary>
         /// <param name="text">The text to transmit.</param>
         /// <exception cref="InvalidOperationException">Thrown if the connection has been closed.</exception>
+        [NotNull]
         public async Task SendTextAsync(string text)
         {
             if (!ConnectionOpen)

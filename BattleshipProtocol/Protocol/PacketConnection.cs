@@ -7,6 +7,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using BattleshipProtocol.Protocol.Exceptions;
 using BattleshipProtocol.Protocol.Internal;
+using BattleshipProtocol.Protocol.Internal.Extensions;
 using JetBrains.Annotations;
 
 namespace BattleshipProtocol.Protocol
@@ -108,6 +109,36 @@ namespace BattleshipProtocol.Protocol
             return true;
         }
 
+        private async void ParsePacketAsync(string packet)
+        {
+            try
+            {
+                if (TryParseResponse(in packet, out Response response))
+                {
+                    OnResponseReceived(in response);
+                    return;
+                }
+
+                if (TryParseCommand(in packet, out ReceivedCommand command))
+                {
+                    OnCommandReceived(in command);
+                    return;
+                }
+
+                // "WHAT YOU MEAN??"
+                throw new ProtocolFormatException(packet);
+            }
+            catch (ProtocolException error)
+            {
+                await SendErrorAsync(error);
+                OnPacketError(error);
+            }
+            catch (Exception unexpected)
+            {
+                OnPacketError(in unexpected);
+            }
+        }
+
         [NotNull]
         public Task<Response> ExpectResponseAsync(in int timeoutOverride)
         {
@@ -165,29 +196,28 @@ namespace BattleshipProtocol.Protocol
             }
         }
 
+        /// <summary>
+        /// Waits and returns the received command, if successfully parsed. Else it will throw.
+        /// </summary>
+        /// <exception cref="ProtocolFormatException">Parsing error.</exception>
+        /// <exception cref="ProtocolUnknownCommandException">Command is not registered.</exception>
+        /// <exception cref="ProtocolUnexpectedDisconnect">Connection closed, couldn't receive command.</exception>
         [NotNull]
         public async Task<ReceivedCommand> ExpectCommandAsync()
         {
-            throw new NotImplementedException();
-            //if (!ConnectionOpen)
-            //    throw new InvalidOperationException("Stream has closed!");
+            if (!ConnectionOpen)
+                throw new InvalidOperationException("Stream has closed!");
 
-            //if (_readerSemaphore.CurrentCount == 0)
-            //    throw new InvalidOperationException("Stream has closed!");
+            string line = await ReadLineAsync();
 
-            //using (await _readerSemaphore.EnterAsync())
-            //{
-            //    string line = await ReadLineAsyncInternal();
+            if (line is null)
+                throw new ProtocolUnexpectedDisconnect();
 
-            //    if (line is null)
-            //        throw new ProtocolUnexpectedDisconnect();
+            if (!TryParseCommand(line, out ReceivedCommand command))
+                throw new ProtocolFormatException(line);
 
-            //    if (!TryParseCommand(line, out ReceivedCommand command))
-            //        throw new ProtocolFormatException(line);
-
-            //    OnCommandReceived(command);
-            //    return command;
-            //}
+            OnCommandReceived(command);
+            return command;
         }
 
         /// <summary>
@@ -291,36 +321,6 @@ namespace BattleshipProtocol.Protocol
                 _packetObservers.Add(observer);
 
             return new ObserverUnsubscriber<IPacket>(_packetObservers, observer);
-        }
-
-        private async void ParsePacketAsync(string packet)
-        {
-            try
-            {
-                if (TryParseResponse(in packet, out Response response))
-                {
-                    OnResponseReceived(in response);
-                    return;
-                }
-
-                if (TryParseCommand(in packet, out ReceivedCommand command))
-                {
-                    OnCommandReceived(in command);
-                    return;
-                }
-
-                // "WHAT YOU MEAN??"
-                throw new ProtocolFormatException(packet);
-            }
-            catch (ProtocolException error)
-            {
-                await SendErrorAsync(error);
-                OnPacketError(error);
-            }
-            catch (Exception unexpected)
-            {
-                OnPacketError(in unexpected);
-            }
         }
     }
 }
