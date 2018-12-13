@@ -19,13 +19,24 @@ namespace BattleshipProtocol
 
         private readonly TcpClient _client;
 
+        /// <summary>
+        /// Gets whether this application is the server.
+        /// </summary>
         public bool IsHost { get; }
+
+        /// <summary>
+        /// Gets the local player object. That is- information about the player in this application.
+        /// </summary>
+        [NotNull]
         public Player LocalPlayer { get; }
+
+        /// <summary>
+        /// Gets the remote player object. That is- information about the other player.
+        /// </summary>
+        [NotNull]
         public Player RemotePlayer { get; }
 
         public PacketConnection PacketConnection { get; }
-
-        public EndPoint RemoteEndPoint => _client.Client.RemoteEndPoint;
 
         private BattleGame(TcpClient client, PacketConnection packetConnection, Board localBoard, string playerName, bool isHost)
         {
