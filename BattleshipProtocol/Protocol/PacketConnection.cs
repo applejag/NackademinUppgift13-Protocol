@@ -292,7 +292,7 @@ namespace BattleshipProtocol.Protocol
             foreach (ICommandTemplate command in _registeredCommands.ToList())
             {
                 if (command.RoutedResponseCodes.Contains(packet.Code))
-                    command.OnResponse(this, in packet);
+                    command.OnResponse(this, packet);
             }
 
             foreach (IObserver<IPacket> observer in _packetObservers.ToList())

@@ -28,7 +28,7 @@ namespace BattleshipProtocol.Game.Commands
         };
 
         /// <inheritdoc />
-        public void OnCommand(in PacketConnection context, in string argument)
+        public void OnCommand(PacketConnection context, string argument)
         {
             // TODO: Validate game state
             // TODO: Fire on our grid
@@ -37,7 +37,7 @@ namespace BattleshipProtocol.Game.Commands
         }
 
         /// <inheritdoc />
-        public void OnResponse(in PacketConnection context, in Response response)
+        public void OnResponse(PacketConnection context, Response response)
         {
             // TODO: Validate game state
             // TODO: Register fire on their grid

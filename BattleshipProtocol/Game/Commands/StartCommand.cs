@@ -15,7 +15,7 @@ namespace BattleshipProtocol.Game.Commands
         };
 
         /// <inheritdoc />
-        public void OnCommand(in PacketConnection context, in string argument)
+        public void OnCommand(PacketConnection context, string argument)
         {
             // TODO: Validate game state
             // TODO: Switch to game-phase
@@ -23,7 +23,7 @@ namespace BattleshipProtocol.Game.Commands
         }
 
         /// <inheritdoc />
-        public void OnResponse(in PacketConnection context, in Response response)
+        public void OnResponse(PacketConnection context, Response response)
         {
             // TODO: Validate game state
             // TODO: Switch to game-phase

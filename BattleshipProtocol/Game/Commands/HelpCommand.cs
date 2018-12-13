@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 using BattleshipProtocol.Protocol;
 
 namespace BattleshipProtocol.Game.Commands
@@ -12,14 +13,13 @@ namespace BattleshipProtocol.Game.Commands
         public ResponseCode[] RoutedResponseCodes { get; } = { };
 
         /// <inheritdoc />
-        public void OnCommand(in PacketConnection context, in string argument)
+        public void OnCommand(PacketConnection context, string argument)
         {
-            // TODO: Display help
-            throw new System.NotImplementedException();
+
         }
 
         /// <inheritdoc />
-        public void OnResponse(in PacketConnection context, in Response response)
+        public void OnResponse(PacketConnection context, Response response)
         {
             throw new NotSupportedException();
         }

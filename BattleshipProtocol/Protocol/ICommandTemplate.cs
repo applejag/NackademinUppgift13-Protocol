@@ -22,13 +22,13 @@ namespace BattleshipProtocol.Protocol
         /// </summary>
         /// <param name="context">The game context.</param>
         /// <param name="argument">The argument received with the command.</param>
-        void OnCommand([NotNull] in PacketConnection context, [CanBeNull] in string argument);
+        void OnCommand([NotNull] PacketConnection context, [CanBeNull] string argument);
 
         /// <summary>
         /// Handles a received response from the other client.
         /// </summary>
         /// <param name="context">The game context.</param>
         /// <param name="response">The response.</param>
-        void OnResponse([NotNull] in PacketConnection context, in Response response);
+        void OnResponse([NotNull] PacketConnection context, Response response);
     }
 }
