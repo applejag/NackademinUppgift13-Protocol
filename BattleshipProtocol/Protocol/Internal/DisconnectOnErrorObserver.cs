@@ -32,7 +32,7 @@ namespace BattleshipProtocol.Protocol.Internal
         {
             ConsecutiveErrorCount++;
 
-            if (ConsecutiveErrorCount > ConsecutiveErrorLimit)
+            if (ConsecutiveErrorCount >= ConsecutiveErrorLimit)
             {
                 await _game.PacketConnection.SendErrorAsync(new ProtocolTooManyErrorsException(ConsecutiveErrorCount));
                 _game.Dispose();
