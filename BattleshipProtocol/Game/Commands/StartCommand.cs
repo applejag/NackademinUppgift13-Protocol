@@ -8,7 +8,14 @@ namespace BattleshipProtocol.Game.Commands
         public string Command { get; } = "START";
 
         /// <inheritdoc />
-        public void OnCommand(BattleGame context, string argument)
+        public ResponseCode[] RoutedResponseCodes { get; } =
+        {
+            ResponseCode.StartClient,
+            ResponseCode.StartHost
+        };
+
+        /// <inheritdoc />
+        public void OnCommand(in PacketConnection context, in string argument)
         {
             // TODO: Validate game state
             // TODO: Switch to game-phase
@@ -16,7 +23,7 @@ namespace BattleshipProtocol.Game.Commands
         }
 
         /// <inheritdoc />
-        public void OnResponse(BattleGame context, Response response)
+        public void OnResponse(in PacketConnection context, in Response response)
         {
             // TODO: Validate game state
             // TODO: Switch to game-phase

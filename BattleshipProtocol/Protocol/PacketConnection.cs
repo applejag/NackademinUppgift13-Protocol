@@ -31,7 +31,7 @@ namespace BattleshipProtocol.Protocol
         /// Initializes the Battleship packets connection with <see cref="Encoding.UTF8"/> encoding.
         /// </summary>
         public PacketConnection([NotNull] in Stream stream)
-            : base(in stream)
+            : this(in stream, Encoding.UTF8)
         {
         }
 
@@ -279,6 +279,8 @@ namespace BattleshipProtocol.Protocol
 
         protected virtual void OnCommandReceived(in ReceivedCommand packet)
         {
+            packet.CommandTemplate.OnCommand(this, packet.Argument);
+
             foreach (IObserver<IPacket> observer in _packetObservers)
             {
                 observer.OnNext(packet);
@@ -287,6 +289,12 @@ namespace BattleshipProtocol.Protocol
 
         protected virtual void OnResponseReceived(in Response packet)
         {
+            foreach (ICommandTemplate command in _registeredCommands)
+            {
+                if (command.RoutedResponseCodes.Contains(packet.Code))
+                    command.OnResponse(this, in packet);
+            }
+
             foreach (IObserver<IPacket> observer in _packetObservers)
             {
                 observer.OnNext(packet);

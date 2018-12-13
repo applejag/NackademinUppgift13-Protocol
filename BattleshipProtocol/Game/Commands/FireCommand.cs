@@ -1,4 +1,5 @@
-﻿using BattleshipProtocol.Protocol;
+﻿using System.Collections.Generic;
+using BattleshipProtocol.Protocol;
 
 namespace BattleshipProtocol.Game.Commands
 {
@@ -7,8 +8,27 @@ namespace BattleshipProtocol.Game.Commands
         /// <inheritdoc />
         public string Command { get; } = "FIRE";
 
+        public ResponseCode[] RoutedResponseCodes { get; } =
+        {
+            ResponseCode.FireMiss,
+
+            ResponseCode.FireHitCarrier,
+            ResponseCode.FireHitBattleship,
+            ResponseCode.FireHitDestroyer,
+            ResponseCode.FireHitSubmarine,
+            ResponseCode.FireHitPatrolBoat,
+
+            ResponseCode.FireSunkCarrier,
+            ResponseCode.FireSunkBattleship,
+            ResponseCode.FireSunkDestroyer,
+            ResponseCode.FireSunkSubmarine,
+            ResponseCode.FireSunkPatrolBoat,
+
+            ResponseCode.FireYouWin,
+        };
+
         /// <inheritdoc />
-        public void OnCommand(BattleGame context, string argument)
+        public void OnCommand(in PacketConnection context, in string argument)
         {
             // TODO: Validate game state
             // TODO: Fire on our grid
@@ -17,7 +37,7 @@ namespace BattleshipProtocol.Game.Commands
         }
 
         /// <inheritdoc />
-        public void OnResponse(BattleGame context, Response response)
+        public void OnResponse(in PacketConnection context, in Response response)
         {
             // TODO: Validate game state
             // TODO: Register fire on their grid

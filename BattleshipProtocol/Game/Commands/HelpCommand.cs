@@ -9,14 +9,17 @@ namespace BattleshipProtocol.Game.Commands
         public string Command { get; } = "HELP";
 
         /// <inheritdoc />
-        public void OnCommand(BattleGame context, string argument)
+        public ResponseCode[] RoutedResponseCodes { get; } = { };
+
+        /// <inheritdoc />
+        public void OnCommand(in PacketConnection context, in string argument)
         {
             // TODO: Display help
             throw new System.NotImplementedException();
         }
 
         /// <inheritdoc />
-        public void OnResponse(BattleGame context, Response response)
+        public void OnResponse(in PacketConnection context, in Response response)
         {
             throw new NotSupportedException();
         }
