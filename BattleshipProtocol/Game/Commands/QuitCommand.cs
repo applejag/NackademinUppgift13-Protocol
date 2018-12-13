@@ -2,6 +2,7 @@
 using System.Threading.Tasks;
 using BattleshipProtocol.Protocol;
 using BattleshipProtocol.Protocol.Exceptions;
+using BattleshipProtocol.Protocol.Internal.Extensions;
 
 namespace BattleshipProtocol.Game.Commands
 {
@@ -16,9 +17,18 @@ namespace BattleshipProtocol.Game.Commands
             ResponseCode.ConnectionClosed
         };
 
+        private readonly BattleGame _game;
+
+        public QuitCommand(BattleGame game)
+        {
+            _game = game;
+        }
+
         /// <inheritdoc />
         public async Task OnCommandAsync(PacketConnection context, string argument)
         {
+            _game.ThrowIfNotHost(Command);
+
             await context.SendResponseAsync(ResponseCode.ConnectionClosed, "Connection closed");
             context.Dispose();
         }
@@ -26,6 +36,8 @@ namespace BattleshipProtocol.Game.Commands
         /// <inheritdoc />
         public Task OnResponseAsync(PacketConnection context, Response response)
         {
+            _game.ThrowIfHost(response.Code);
+
             context.Dispose();
             return Task.CompletedTask;
         }

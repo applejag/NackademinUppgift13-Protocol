@@ -1,5 +1,6 @@
 ﻿using System.Threading.Tasks;
 using BattleshipProtocol.Protocol;
+using BattleshipProtocol.Protocol.Internal.Extensions;
 
 namespace BattleshipProtocol.Game.Commands
 {
@@ -14,10 +15,18 @@ namespace BattleshipProtocol.Game.Commands
             ResponseCode.StartClient,
             ResponseCode.StartHost
         };
+        private readonly BattleGame _game;
+
+        public StartCommand(BattleGame game)
+        {
+            _game = game;
+        }
 
         /// <inheritdoc />
         public Task OnCommandAsync(PacketConnection context, string argument)
         {
+            _game.ThrowIfNotHost(Command);
+            
             // TODO: Validate game state
             // TODO: Switch to game-phase
             throw new System.NotImplementedException();
@@ -26,6 +35,8 @@ namespace BattleshipProtocol.Game.Commands
         /// <inheritdoc />
         public Task OnResponseAsync(PacketConnection context, Response response)
         {
+            _game.ThrowIfHost(response.Code);
+
             // TODO: Validate game state
             // TODO: Switch to game-phase
             throw new System.NotImplementedException();

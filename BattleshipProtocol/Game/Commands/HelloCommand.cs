@@ -1,6 +1,7 @@
 ﻿using System.Threading.Tasks;
 using BattleshipProtocol.Protocol;
 using BattleshipProtocol.Protocol.Exceptions;
+using BattleshipProtocol.Protocol.Internal.Extensions;
 
 namespace BattleshipProtocol.Game.Commands
 {
@@ -25,6 +26,8 @@ namespace BattleshipProtocol.Game.Commands
         /// <inheritdoc />
         public async Task OnCommandAsync(PacketConnection context, string argument)
         {
+            _game.ThrowIfNotHost(Command);
+
             SetNameFromArgument(argument);
 
             await context.SendResponseAsync(ResponseCode.Handshake, _game.LocalPlayer.Name);
@@ -33,6 +36,8 @@ namespace BattleshipProtocol.Game.Commands
         /// <inheritdoc />
         public Task OnResponseAsync(PacketConnection context, Response response)
         {
+            _game.ThrowIfHost(response.Code);
+
             SetNameFromArgument(response.Message);
             return Task.CompletedTask;
         }

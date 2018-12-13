@@ -51,8 +51,8 @@ namespace BattleshipProtocol
             packetConnection.RegisterCommand(new FireCommand());
             packetConnection.RegisterCommand(new HelloCommand(this));
             packetConnection.RegisterCommand(new HelpCommand());
-            packetConnection.RegisterCommand(new StartCommand());
-            packetConnection.RegisterCommand(new QuitCommand());
+            packetConnection.RegisterCommand(new StartCommand(this));
+            packetConnection.RegisterCommand(new QuitCommand(this));
 
             ForwardErrorsObserver.SubscribeTo(this);
             DisconnectOnErrorObserver.SubscribeTo(this);
