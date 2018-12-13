@@ -319,7 +319,7 @@ namespace BattleshipProtocol.Protocol
             if (!_packetObservers.Contains(observer))
                 _packetObservers.Add(observer);
 
-            return new ObserverUnsubscriber<IPacket>(_packetObservers, observer);
+            return new UnsubscribingObserver<IPacket>(_packetObservers, observer);
         }
     }
 }

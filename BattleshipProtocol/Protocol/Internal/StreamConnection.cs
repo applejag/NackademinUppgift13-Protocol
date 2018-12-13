@@ -280,7 +280,7 @@ namespace BattleshipProtocol.Protocol.Internal
             if (!_observers.Contains(observer))
                 _observers.Add(observer);
 
-            return new ObserverUnsubscriber<string>(_observers, observer);
+            return new UnsubscribingObserver<string>(_observers, observer);
         }
     }
 }
