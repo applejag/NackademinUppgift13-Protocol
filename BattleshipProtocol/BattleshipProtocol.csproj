@@ -54,6 +54,9 @@
     <Compile Include="Game\Ship.cs" />
     <Compile Include="Game\ShipType.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Protocol\Exceptions\ProtocolTooManyErrorsException.cs" />
+    <Compile Include="Protocol\Internal\DisconnectOnErrorObserver.cs" />
+    <Compile Include="Protocol\Internal\ForwardErrorsObserver.cs" />
     <Compile Include="Protocol\PacketConnection.cs" />
     <Compile Include="Protocol\Internal\StreamConnection.cs" />
     <Compile Include="Game\Commands\QuitCommand.cs" />
@@ -72,7 +75,7 @@
     <Compile Include="Protocol\ReceivedCommand.cs" />
     <Compile Include="Protocol\Response.cs" />
     <Compile Include="Protocol\ResponseCode.cs" />
-    <Compile Include="Protocol\Internal\ObserverUnsubscriber.cs" />
+    <Compile Include="Protocol\Internal\UnsubscribingObserver.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\BattleshipProtocol.asmdef">

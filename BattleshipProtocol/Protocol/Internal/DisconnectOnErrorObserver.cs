@@ -1,4 +1,5 @@
 ﻿using System;
+using BattleshipProtocol.Protocol.Exceptions;
 
 namespace BattleshipProtocol.Protocol.Internal
 {
@@ -13,9 +14,12 @@ namespace BattleshipProtocol.Protocol.Internal
             _game = game;
         }
 
-        public static IDisposable SubscribeTo(BattleGame game)
+        public static IDisposable SubscribeTo(BattleGame game, int errorLimit = 3)
         {
-            var observer = new DisconnectOnErrorObserver(game);
+            var observer = new DisconnectOnErrorObserver(game)
+            {
+                ConsecutiveErrorLimit = errorLimit
+            };
             return game.PacketConnection.Subscribe(observer);
         }
 
@@ -24,12 +28,13 @@ namespace BattleshipProtocol.Protocol.Internal
             ConsecutiveErrorCount = 0;
         }
 
-        public void OnError(Exception error)
+        public async void OnError(Exception error)
         {
             ConsecutiveErrorCount++;
 
             if (ConsecutiveErrorCount > ConsecutiveErrorLimit)
             {
+                await _game.PacketConnection.SendErrorAsync(new ProtocolTooManyErrorsException(ConsecutiveErrorCount));
                 _game.Dispose();
             }
         }
