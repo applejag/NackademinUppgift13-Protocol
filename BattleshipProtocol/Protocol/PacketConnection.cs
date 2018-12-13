@@ -108,7 +108,7 @@ namespace BattleshipProtocol.Protocol
             return true;
         }
 
-        private async void ParsePacketAsync(string packet)
+        private void ParsePacket(string packet)
         {
             try
             {
@@ -262,7 +262,7 @@ namespace BattleshipProtocol.Protocol
         protected override void OnStringLineReceived(in string packet)
         {
             base.OnStringLineReceived(in packet);
-            ParsePacketAsync(packet);
+            ParsePacket(packet);
         }
 
         protected virtual void OnPacketError(in Exception error)

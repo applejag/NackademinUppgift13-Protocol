@@ -1,4 +1,6 @@
-﻿using BattleshipProtocol.Protocol;
+﻿using System.Threading.Tasks;
+using BattleshipProtocol.Protocol;
+using BattleshipProtocol.Protocol.Exceptions;
 
 namespace BattleshipProtocol.Game.Commands
 {
@@ -13,18 +15,38 @@ namespace BattleshipProtocol.Game.Commands
             ResponseCode.Handshake
         };
 
-        /// <inheritdoc />
-        public void OnCommand(PacketConnection context, string argument)
+        private readonly BattleGame _game;
+
+        public HelloCommand(BattleGame game)
         {
-            // TODO: Save name (from message) into opponent game object and send a 220 response with our name
-            throw new System.NotImplementedException();
+            _game = game;
+        }
+
+        /// <inheritdoc />
+        public async void OnCommand(PacketConnection context, string argument)
+        {
+            SetNameFromArgument(argument);
+
+            await context.SendResponseAsync(ResponseCode.Handshake, _game.LocalPlayer.Name);
         }
 
         /// <inheritdoc />
         public void OnResponse(PacketConnection context, Response response)
         {
-            // TODO: Save name (from response) into opponent game object
-            throw new System.NotImplementedException();
+            SetNameFromArgument(response.Message);
+        }
+
+        private void SetNameFromArgument(string argument)
+        {
+            if (_game.RemotePlayer.Name != null)
+                throw new ProtocolException(ResponseCode.SequenceError, "Name already set.");
+
+            argument = argument?.Trim();
+
+            if (string.IsNullOrEmpty(argument))
+                throw new ProtocolException(ResponseCode.SyntaxError, "Missing name from response.");
+
+            _game.RemotePlayer.Name = argument;
         }
     }
 }

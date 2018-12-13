@@ -204,6 +204,17 @@ namespace BattleshipProtocol.Protocol.Internal
         }
 
         /// <summary>
+        /// Send a response (asynchronously) to the other client.
+        /// </summary>
+        /// <param name="code">The response code to transmit.</param>
+        /// <param name="message">The optional message to append to the response.</param>
+        /// <exception cref="InvalidOperationException">Thrown if the connection has been closed.</exception>
+        public Task SendResponseAsync(ResponseCode code, [CanBeNull] string message)
+        {
+            return SendResponseAsync(new Response(code, message));
+        }
+
+        /// <summary>
         /// Send a command (asynchronously) to the other client.
         /// </summary>
         /// <param name="commandTemplate">The command to transmit.</param>
