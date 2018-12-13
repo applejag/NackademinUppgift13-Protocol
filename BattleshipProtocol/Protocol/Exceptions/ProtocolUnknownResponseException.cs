@@ -1,6 +1,4 @@
-﻿using JetBrains.Annotations;
-
-namespace BattleshipProtocol.Protocol.Exceptions
+﻿namespace BattleshipProtocol.Protocol.Exceptions
 {
     public class ProtocolUnknownResponseException : ProtocolException
     {
