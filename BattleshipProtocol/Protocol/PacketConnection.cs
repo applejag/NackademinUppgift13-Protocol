@@ -7,7 +7,6 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using BattleshipProtocol.Protocol.Exceptions;
 using BattleshipProtocol.Protocol.Internal;
-using BattleshipProtocol.Protocol.Internal.Extensions;
 using JetBrains.Annotations;
 
 namespace BattleshipProtocol.Protocol
@@ -158,26 +157,16 @@ namespace BattleshipProtocol.Protocol
         [NotNull]
         public async Task<Response> ExpectResponseAsync()
         {
-            throw new NotImplementedException();
-            //if (!ConnectionOpen)
-            //    throw new InvalidOperationException("Stream has closed!");
+            string line = await ReadLineAsync();
 
-            //if (_readerSemaphore.CurrentCount == 0)
-            //    throw new InvalidOperationException("Stream has closed!");
+            if (line is null)
+                throw new ProtocolUnexpectedDisconnect();
 
-            //using (await _readerSemaphore.EnterAsync())
-            //{
-            //    string line = await ReadLineAsyncInternal();
+            if (!TryParseResponse(line, out Response response))
+                throw new ProtocolFormatException(line);
 
-            //    if (line is null)
-            //        throw new ProtocolUnexpectedDisconnect();
-
-            //    if (!TryParseResponse(line, out Response response))
-            //        throw new ProtocolFormatException(line);
-
-            //    OnResponseReceived(response);
-            //    return response;
-            //}
+            OnResponseReceived(response);
+            return response;
         }
 
         [NotNull]
@@ -205,9 +194,6 @@ namespace BattleshipProtocol.Protocol
         [NotNull]
         public async Task<ReceivedCommand> ExpectCommandAsync()
         {
-            if (!ConnectionOpen)
-                throw new InvalidOperationException("Stream has closed!");
-
             string line = await ReadLineAsync();
 
             if (line is null)
@@ -277,6 +263,11 @@ namespace BattleshipProtocol.Protocol
             await SendCommandAsync(commandTemplate, argument);
         }
 
+        protected override void OnStringLineReceived(in string packet)
+        {
+            base.OnStringLineReceived(in packet);
+            ParsePacketAsync(packet);
+        }
 
         protected virtual void OnPacketError(in Exception error)
         {
