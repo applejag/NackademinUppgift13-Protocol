@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -249,7 +250,7 @@ namespace BattleshipProtocol.Protocol.Internal
 
         protected virtual void OnError(in Exception error)
         {
-            foreach (IObserver<string> observer in _observers)
+            foreach (IObserver<string> observer in _observers.ToList())
             {
                 observer.OnError(error);
             }
@@ -257,7 +258,7 @@ namespace BattleshipProtocol.Protocol.Internal
 
         protected virtual void OnStringLineReceived(in string packet)
         {
-            foreach (IObserver<string> observer in _observers)
+            foreach (IObserver<string> observer in _observers.ToList())
             {
                 observer.OnNext(packet);
             }
@@ -265,7 +266,7 @@ namespace BattleshipProtocol.Protocol.Internal
 
         protected virtual void OnStreamClosed()
         {
-            foreach (IObserver<string> observer in _observers)
+            foreach (IObserver<string> observer in _observers.ToList())
             {
                 observer.OnCompleted();
             }

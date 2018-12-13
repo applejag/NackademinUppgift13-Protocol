@@ -271,7 +271,7 @@ namespace BattleshipProtocol.Protocol
 
         protected virtual void OnPacketError(in Exception error)
         {
-            foreach (IObserver<IPacket> observer in _packetObservers)
+            foreach (IObserver<IPacket> observer in _packetObservers.ToList())
             {
                 observer.OnError(error);
             }
@@ -281,7 +281,7 @@ namespace BattleshipProtocol.Protocol
         {
             packet.CommandTemplate.OnCommand(this, packet.Argument);
 
-            foreach (IObserver<IPacket> observer in _packetObservers)
+            foreach (IObserver<IPacket> observer in _packetObservers.ToList())
             {
                 observer.OnNext(packet);
             }
@@ -289,13 +289,13 @@ namespace BattleshipProtocol.Protocol
 
         protected virtual void OnResponseReceived(in Response packet)
         {
-            foreach (ICommandTemplate command in _registeredCommands)
+            foreach (ICommandTemplate command in _registeredCommands.ToList())
             {
                 if (command.RoutedResponseCodes.Contains(packet.Code))
                     command.OnResponse(this, in packet);
             }
 
-            foreach (IObserver<IPacket> observer in _packetObservers)
+            foreach (IObserver<IPacket> observer in _packetObservers.ToList())
             {
                 observer.OnNext(packet);
             }
@@ -305,7 +305,7 @@ namespace BattleshipProtocol.Protocol
         {
             base.OnStreamClosed();
 
-            foreach (IObserver<IPacket> observer in _packetObservers)
+            foreach (IObserver<IPacket> observer in _packetObservers.ToList())
             {
                 observer.OnCompleted();
             }
