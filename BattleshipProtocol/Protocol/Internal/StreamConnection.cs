@@ -22,11 +22,10 @@ namespace BattleshipProtocol.Protocol.Internal
 
         private CancellationTokenSource _listenCancellationTokenSource;
 
-        public bool ConnectionOpen { get; private set; } = true;
-        public bool IsConnected => _listenCancellationTokenSource != null;
+        public bool IsConnected { get; private set; } = true;
+        public bool IsListening => _listenCancellationTokenSource != null;
 
-        public int ReadTimeout
-        {
+        public int ReadTimeout {
             get => _stream.ReadTimeout;
             set => _stream.ReadTimeout = value;
         }
@@ -66,26 +65,23 @@ namespace BattleshipProtocol.Protocol.Internal
         /// <exception cref="InvalidOperationException">Thrown if it's already listening.</exception>
         public void BeginListening()
         {
-            if (!Monitor.TryEnter(_reader))
+            if (!_readerSemaphore.Wait(0))
                 throw new InvalidOperationException("This stream is already listening.");
-            
+
             _listenCancellationTokenSource = new CancellationTokenSource();
-            
+
             Task.Run(() =>
             {
-                using (_readerSemaphore.Enter())
+                while (IsConnected)
                 {
-                    while (ConnectionOpen)
-                    {
-                        ReadAndHandleInternal();
-                    }
+                    ReadAndHandleInternal();
                 }
             }, _listenCancellationTokenSource.Token).ContinueWith(t =>
             {
                 if (!t.IsCanceled && t.IsFaulted)
                     OnError(t.Exception);
-
-                Monitor.Exit(_reader);
+                
+                _readerSemaphore.Release();
             });
         }
 
@@ -96,7 +92,7 @@ namespace BattleshipProtocol.Protocol.Internal
         /// <exception cref="InvalidOperationException">Thrown if the connection has been closed.</exception>
         private void ReadAndHandleInternal()
         {
-            if (!ConnectionOpen)
+            if (!IsConnected)
                 throw new InvalidOperationException("Stream has closed!");
 
             string line;
@@ -125,10 +121,10 @@ namespace BattleshipProtocol.Protocol.Internal
         [CanBeNull]
         public string ReadLine()
         {
-            if (!ConnectionOpen)
+            if (!IsConnected)
                 throw new InvalidOperationException("Stream has closed!");
 
-            if (IsConnected)
+            if (IsListening)
                 throw new InvalidOperationException("Stream is already being read by " + nameof(BeginListening) + ".");
 
             return _reader.ReadLine();
@@ -142,10 +138,10 @@ namespace BattleshipProtocol.Protocol.Internal
         [NotNull, ItemCanBeNull]
         public async Task<string> ReadLineAsync()
         {
-            if (!ConnectionOpen)
+            if (!IsConnected)
                 throw new InvalidOperationException("Stream has closed!");
 
-            if (IsConnected)
+            if (IsListening)
                 throw new InvalidOperationException("Stream is already being read by " + nameof(BeginListening) + ".");
 
             return await _reader.ReadLineAsync();
@@ -159,7 +155,7 @@ namespace BattleshipProtocol.Protocol.Internal
         [NotNull]
         public async Task SendTextAsync(string text)
         {
-            if (!ConnectionOpen)
+            if (!IsConnected)
                 throw new InvalidOperationException("Stream has closed!");
 
             using (await _writerSemaphore.EnterAsync())
@@ -179,7 +175,7 @@ namespace BattleshipProtocol.Protocol.Internal
         /// <exception cref="InvalidOperationException">Thrown if the connection has been closed.</exception>
         public async Task SendErrorAsync(ProtocolException error)
         {
-            if (!ConnectionOpen)
+            if (!IsConnected)
                 throw new InvalidOperationException("Stream has closed!");
 
             using (await _writerSemaphore.EnterAsync())
@@ -196,7 +192,7 @@ namespace BattleshipProtocol.Protocol.Internal
         /// <exception cref="InvalidOperationException">Thrown if the connection has been closed.</exception>
         public async Task SendResponseAsync(Response response)
         {
-            if (!ConnectionOpen)
+            if (!IsConnected)
                 throw new InvalidOperationException("Stream has closed!");
 
             using (await _writerSemaphore.EnterAsync())
@@ -214,7 +210,7 @@ namespace BattleshipProtocol.Protocol.Internal
         /// <exception cref="InvalidOperationException">Thrown if the connection has been closed.</exception>
         protected async Task SendCommandAsync([NotNull] ICommandTemplate commandTemplate, [CanBeNull] string argument)
         {
-            if (!ConnectionOpen)
+            if (!IsConnected)
                 throw new InvalidOperationException("Stream has closed!");
 
             using (await _writerSemaphore.EnterAsync())
@@ -231,9 +227,12 @@ namespace BattleshipProtocol.Protocol.Internal
 
         public virtual void Dispose()
         {
-            if (!ConnectionOpen) return;
+            if (!IsConnected) return;
 
-            ConnectionOpen = false;
+            if (IsListening)
+                _listenCancellationTokenSource?.Cancel();
+
+            IsConnected = false;
             OnStreamClosed();
 
             _reader.Dispose();
