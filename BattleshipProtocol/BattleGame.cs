@@ -2,6 +2,7 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
+using BattleshipProtocol.Game;
 using BattleshipProtocol.Game.Commands;
 using BattleshipProtocol.Protocol;
 using BattleshipProtocol.Protocol.Exceptions;
@@ -19,18 +20,20 @@ namespace BattleshipProtocol
         private readonly StreamConnection _connection;
 
         public bool IsHost { get; }
-        public string PlayerName { get; }
-        public string OpponentName { get; private set; }
+        public Player LocalPlayer { get; }
+        public Player RemotePlayer { get; }
 
         public PacketConnection PacketConnection { get; }
 
         public EndPoint RemoteEndPoint => _client.Client.RemoteEndPoint;
 
-        private BattleGame(TcpClient client, StreamConnection connection, PacketConnection packetConnection, string playerName, bool isHost)
+        private BattleGame(TcpClient client, PacketConnection packetConnection, string playerName, bool isHost)
         {
             IsHost = isHost;
+            LocalPlayer = new Player(true, client.Client.LocalEndPoint);
+            RemotePlayer = new Player(false, client.Client.RemoteEndPoint);
+
             _client = client;
-            _connection = connection;
             PacketConnection = packetConnection;
 
             ForwardErrorsObserver.SubscribeTo(this);
@@ -77,7 +80,7 @@ namespace BattleshipProtocol
 
             await connection.SendCommandAsync<HelloCommand>(playerName);
 
-            return new BattleGame(tcp, connection, connection, playerName, isHost: false);
+            return new BattleGame(tcp, connection, playerName, isHost: false);
         }
 
         /// <summary>
@@ -115,7 +118,7 @@ namespace BattleshipProtocol
                 connection.RegisterCommand(new StartCommand());
                 connection.RegisterCommand(new QuitCommand());
 
-                return new BattleGame(tcp, connection, connection, playerName, true);
+                return new BattleGame(tcp, connection, playerName, true);
             }
             finally
             {
