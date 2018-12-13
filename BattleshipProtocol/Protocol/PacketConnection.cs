@@ -128,15 +128,9 @@ namespace BattleshipProtocol.Protocol
                 // "WHAT YOU MEAN??"
                 throw new ProtocolFormatException(packet);
             }
-            catch (ProtocolException error)
+            catch (Exception error)
             {
-                await SendErrorAsync(error);
-                OnPacketError(error);
-            }
-            catch (Exception unexpected)
-            {
-                await SendErrorAsync(new ProtocolException(ResponseCode.SyntaxError, "Unexpected exception: "+ unexpected.Message));
-                OnPacketError(in unexpected);
+                OnPacketError(in error);
             }
         }
 

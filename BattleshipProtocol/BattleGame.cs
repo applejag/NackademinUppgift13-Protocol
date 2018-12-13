@@ -33,6 +33,7 @@ namespace BattleshipProtocol
             _connection = connection;
             PacketConnection = packetConnection;
 
+            ForwardErrorsObserver.SubscribeTo(this);
             DisconnectOnErrorObserver.SubscribeTo(this);
 
             PacketConnection.BeginListening();
