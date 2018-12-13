@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using BattleshipProtocol.Protocol.Exceptions;
 using BattleshipProtocol.Protocol.Internal;
@@ -23,8 +24,15 @@ namespace BattleshipProtocol.Protocol
 
         private readonly HashSet<IObserver<IPacket>> _packetObservers = new HashSet<IObserver<IPacket>>();
 
+        private int _consecutiveErrorCount;
+
         [NotNull, ItemNotNull]
         public IReadOnlyCollection<ICommandTemplate> RegisteredCommands => _registeredCommands;
+
+        /// <summary>
+        /// Gets or sets the consecutive error limit. Default is 3.
+        /// </summary>
+        public int ConsecutiveErrorLimit { get; set; } = 3;
 
         /// <inheritdoc/>
         /// <summary>
@@ -120,6 +128,8 @@ namespace BattleshipProtocol.Protocol
                     await Task.WhenAll(_registeredCommands.ToList()
                         .Where(t => t.RoutedResponseCodes.Contains(response.Code))
                         .Select(t => t.OnResponseAsync(this, response)));
+
+                    _consecutiveErrorCount = 0;
                     return;
                 }
 
@@ -129,6 +139,8 @@ namespace BattleshipProtocol.Protocol
 
                     // Execute command
                     await command.CommandTemplate.OnCommandAsync(this, command.Argument);
+
+                    _consecutiveErrorCount = 0;
                     return;
                 }
 
@@ -137,7 +149,18 @@ namespace BattleshipProtocol.Protocol
             }
             catch (Exception error)
             {
+                Interlocked.Increment(ref _consecutiveErrorCount);
                 OnPacketError(in error);
+            }
+            finally
+            {
+                if (_consecutiveErrorCount >= ConsecutiveErrorLimit)
+                {
+                    var tooManyError = new ProtocolTooManyErrorsException(_consecutiveErrorCount);
+                    OnPacketError(tooManyError);
+
+                    Dispose();
+                }
             }
         }
 
@@ -264,11 +287,6 @@ namespace BattleshipProtocol.Protocol
                 throw new ArgumentException($"Command {typeof(T).Name} is not registered for this stream.", nameof(T));
 
             await SendCommandAsync(commandTemplate, argument);
-        }
-
-        internal void BroadcastErrorToObserversInternal(in Exception error)
-        {
-            OnPacketError(error);
         }
 
         protected override void OnStringLineReceived(in string packet)

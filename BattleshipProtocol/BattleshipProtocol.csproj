@@ -58,7 +58,6 @@
     <Compile Include="Protocol\Exceptions\ProtocolBoundedResponseException.cs" />
     <Compile Include="Protocol\Exceptions\ProtocolBoundedCommandException.cs" />
     <Compile Include="Protocol\Exceptions\ProtocolTooManyErrorsException.cs" />
-    <Compile Include="Protocol\Internal\DisconnectOnErrorObserver.cs" />
     <Compile Include="Protocol\Internal\Extensions\BattleGameExtensions.cs" />
     <Compile Include="Protocol\Internal\ForwardErrorsObserver.cs" />
     <Compile Include="Protocol\PacketConnection.cs" />

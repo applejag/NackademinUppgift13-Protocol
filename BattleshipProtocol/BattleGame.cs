@@ -55,7 +55,6 @@ namespace BattleshipProtocol
             packetConnection.RegisterCommand(new QuitCommand(this));
 
             ForwardErrorsObserver.SubscribeTo(this);
-            DisconnectOnErrorObserver.SubscribeTo(this);
 
             PacketConnection.BeginListening();
         }
