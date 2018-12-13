@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
@@ -27,14 +28,21 @@ namespace BattleshipProtocol
 
         public EndPoint RemoteEndPoint => _client.Client.RemoteEndPoint;
 
-        private BattleGame(TcpClient client, PacketConnection packetConnection, string playerName, bool isHost)
+        private BattleGame(TcpClient client, PacketConnection packetConnection, Board localBoard, string playerName, bool isHost)
         {
             IsHost = isHost;
-            LocalPlayer = new Player(true, client.Client.LocalEndPoint);
             RemotePlayer = new Player(false, client.Client.RemoteEndPoint);
+            LocalPlayer = new Player(true, client.Client.LocalEndPoint)
+                {Name = playerName, Board = localBoard};
 
             _client = client;
             PacketConnection = packetConnection;
+
+            packetConnection.RegisterCommand(new FireCommand());
+            packetConnection.RegisterCommand(new HelloCommand(this));
+            packetConnection.RegisterCommand(new HelpCommand());
+            packetConnection.RegisterCommand(new StartCommand());
+            packetConnection.RegisterCommand(new QuitCommand());
 
             ForwardErrorsObserver.SubscribeTo(this);
             DisconnectOnErrorObserver.SubscribeTo(this);
@@ -56,15 +64,25 @@ namespace BattleshipProtocol
         /// </summary>
         /// <param name="address">Host name or IP address.</param>
         /// <param name="port">Host port.</param>
-        /// <param name="playerName">The name of this player.</param>
+        /// <param name="localBoard">The board of the local player.</param>
+        /// <param name="localPlayerName">The name of the local player.</param>
         /// <param name="timeout">Timeout in milliseconds for awaiting version handshake.</param>
         /// <exception cref="SocketException">An error occurred when accessing the socket.</exception>
-        /// <exception cref="ArgumentNullException">The <paramref name="address"/> is not null.</exception>
+        /// <exception cref="ArgumentNullException">The <paramref name="address"/> parameter is null.</exception>
         /// <exception cref="ProtocolException">Version handshake failed.</exception>
+        /// <exception cref="SocketException">An error occurred when accessing the socket.</exception>
+        /// <exception cref="ArgumentNullException">The <paramref name="localPlayerName"/> parameter is null or whitespace.</exception>
+        /// <exception cref="ArgumentException">The ships in the <paramref name="localBoard"/> parameter is not set up.</exception>
         [NotNull]
         public static async Task<BattleGame> ConnectAsync([NotNull] string address, ushort port, 
-            [NotNull] string playerName, int timeout = 10_000)
+            [NotNull] Board localBoard, [NotNull] string localPlayerName, int timeout = 10_000)
         {
+            if (string.IsNullOrWhiteSpace(localPlayerName))
+                throw new ArgumentNullException(nameof(localPlayerName), "Name of local player must be set.");
+
+            if (!localBoard.Ships.All(s => s.IsOnBoard))
+                throw new ArgumentException("Local board is not set up!", nameof(localBoard));
+
             var tcp = new TcpClient();
 
             await tcp.ConnectAsync(address, port);
@@ -72,15 +90,11 @@ namespace BattleshipProtocol
 
             await connection.EnsureVersionGreeting(ProtocolVersion, timeout);
 
-            connection.RegisterCommand(new FireCommand());
-            connection.RegisterCommand(new HelloCommand());
-            connection.RegisterCommand(new HelpCommand());
-            connection.RegisterCommand(new StartCommand());
-            connection.RegisterCommand(new QuitCommand());
+            var game = new BattleGame(tcp, connection, localBoard, localPlayerName, isHost: false);
 
-            await connection.SendCommandAsync<HelloCommand>(playerName);
+            await game.PacketConnection.SendCommandAsync<HelloCommand>(localPlayerName);
 
-            return new BattleGame(tcp, connection, playerName, isHost: false);
+            return game;
         }
 
         /// <summary>
@@ -93,11 +107,21 @@ namespace BattleshipProtocol
         /// </para>
         /// </summary>
         /// <param name="port">Host port.</param>
-        /// <param name="playerName">Name of the hosting player.</param>
+        /// <param name="localBoard">The board of the local player.</param>
+        /// <param name="localPlayerName">The name of the local player.</param>
         /// <exception cref="SocketException">An error occurred when accessing the socket.</exception>
+        /// <exception cref="ArgumentNullException">The <paramref name="localPlayerName"/> parameter is null or whitespace.</exception>
+        /// <exception cref="ArgumentException">The ships in the <paramref name="localBoard"/> parameter is not set up.</exception>
         [NotNull]
-        public static async Task<BattleGame> HostAndWaitAsync(ushort port, string playerName)
+        public static async Task<BattleGame> HostAndWaitAsync(ushort port,
+            [NotNull] Board localBoard, [NotNull] string localPlayerName)
         {
+            if (string.IsNullOrWhiteSpace(localPlayerName))
+                throw new ArgumentNullException(nameof(localPlayerName), "Name of local player must be set.");
+
+            if (!localBoard.Ships.All(s => s.IsOnBoard))
+                throw new ArgumentException("Local board is not set up!", nameof(localBoard));
+
             TcpListener listener = TcpListener.Create(port);
             try
             {
@@ -111,14 +135,8 @@ namespace BattleshipProtocol
                     Code = ResponseCode.VersionGreeting,
                     Message = ProtocolVersion
                 });
-                
-                connection.RegisterCommand(new FireCommand());
-                connection.RegisterCommand(new HelloCommand());
-                connection.RegisterCommand(new HelpCommand());
-                connection.RegisterCommand(new StartCommand());
-                connection.RegisterCommand(new QuitCommand());
 
-                return new BattleGame(tcp, connection, playerName, true);
+                return new BattleGame(tcp, connection, localBoard, localPlayerName, true);
             }
             finally
             {
