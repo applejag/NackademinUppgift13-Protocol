@@ -120,6 +120,7 @@ namespace BattleshipProtocol.Protocol
 
                 if (TryParseCommand(in packet, out ReceivedCommand command))
                 {
+                    command.CommandTemplate.OnCommand(this, command.Argument);
                     OnCommandReceived(in command);
                     return;
                 }
@@ -134,6 +135,7 @@ namespace BattleshipProtocol.Protocol
             }
             catch (Exception unexpected)
             {
+                await SendErrorAsync(new ProtocolException(ResponseCode.SyntaxError, "Unexpected exception: "+ unexpected.Message));
                 OnPacketError(in unexpected);
             }
         }
@@ -279,8 +281,6 @@ namespace BattleshipProtocol.Protocol
 
         protected virtual void OnCommandReceived(in ReceivedCommand packet)
         {
-            packet.CommandTemplate.OnCommand(this, packet.Argument);
-
             foreach (IObserver<IPacket> observer in _packetObservers.ToList())
             {
                 observer.OnNext(packet);
