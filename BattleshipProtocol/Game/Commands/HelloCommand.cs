@@ -23,7 +23,7 @@ namespace BattleshipProtocol.Game.Commands
         }
 
         /// <inheritdoc />
-        public async void OnCommand(PacketConnection context, string argument)
+        public async Task OnCommandAsync(PacketConnection context, string argument)
         {
             SetNameFromArgument(argument);
 
@@ -31,9 +31,10 @@ namespace BattleshipProtocol.Game.Commands
         }
 
         /// <inheritdoc />
-        public void OnResponse(PacketConnection context, Response response)
+        public Task OnResponseAsync(PacketConnection context, Response response)
         {
             SetNameFromArgument(response.Message);
+            return Task.CompletedTask;
         }
 
         private void SetNameFromArgument(string argument)

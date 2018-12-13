@@ -108,20 +108,27 @@ namespace BattleshipProtocol.Protocol
             return true;
         }
 
-        private void ParsePacket(string packet)
+        private async void ParsePacketAsync(string packet)
         {
             try
             {
                 if (TryParseResponse(in packet, out Response response))
                 {
                     OnResponseReceived(in response);
+
+                    // Execute commands
+                    await Task.WhenAll(_registeredCommands.ToList()
+                        .Where(t => t.RoutedResponseCodes.Contains(response.Code))
+                        .Select(t => t.OnResponseAsync(this, response)));
                     return;
                 }
 
                 if (TryParseCommand(in packet, out ReceivedCommand command))
                 {
-                    command.CommandTemplate.OnCommand(this, command.Argument);
                     OnCommandReceived(in command);
+
+                    // Execute command
+                    await command.CommandTemplate.OnCommandAsync(this, command.Argument);
                     return;
                 }
 
@@ -259,10 +266,15 @@ namespace BattleshipProtocol.Protocol
             await SendCommandAsync(commandTemplate, argument);
         }
 
+        internal void BroadcastErrorToObserversInternal(in Exception error)
+        {
+            OnPacketError(error);
+        }
+
         protected override void OnStringLineReceived(in string packet)
         {
             base.OnStringLineReceived(in packet);
-            ParsePacket(packet);
+            ParsePacketAsync(packet);
         }
 
         protected virtual void OnPacketError(in Exception error)
@@ -283,12 +295,6 @@ namespace BattleshipProtocol.Protocol
 
         protected virtual void OnResponseReceived(in Response packet)
         {
-            foreach (ICommandTemplate command in _registeredCommands.ToList())
-            {
-                if (command.RoutedResponseCodes.Contains(packet.Code))
-                    command.OnResponse(this, packet);
-            }
-
             foreach (IObserver<IPacket> observer in _packetObservers.ToList())
             {
                 observer.OnNext(packet);

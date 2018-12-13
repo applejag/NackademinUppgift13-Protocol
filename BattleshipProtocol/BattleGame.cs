@@ -18,7 +18,6 @@ namespace BattleshipProtocol
         public const string ProtocolVersion = "BATTLESHIP/1.0";
 
         private readonly TcpClient _client;
-        private readonly StreamConnection _connection;
 
         public bool IsHost { get; }
         public Player LocalPlayer { get; }
@@ -152,7 +151,6 @@ namespace BattleshipProtocol
         public virtual void Dispose()
         {
             _client.Dispose();
-            _connection.Dispose();
         }
     }
 }

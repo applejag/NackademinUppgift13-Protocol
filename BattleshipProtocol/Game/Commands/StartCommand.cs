@@ -1,4 +1,5 @@
-﻿using BattleshipProtocol.Protocol;
+﻿using System.Threading.Tasks;
+using BattleshipProtocol.Protocol;
 
 namespace BattleshipProtocol.Game.Commands
 {
@@ -15,7 +16,7 @@ namespace BattleshipProtocol.Game.Commands
         };
 
         /// <inheritdoc />
-        public void OnCommand(PacketConnection context, string argument)
+        public Task OnCommandAsync(PacketConnection context, string argument)
         {
             // TODO: Validate game state
             // TODO: Switch to game-phase
@@ -23,7 +24,7 @@ namespace BattleshipProtocol.Game.Commands
         }
 
         /// <inheritdoc />
-        public void OnResponse(PacketConnection context, Response response)
+        public Task OnResponseAsync(PacketConnection context, Response response)
         {
             // TODO: Validate game state
             // TODO: Switch to game-phase

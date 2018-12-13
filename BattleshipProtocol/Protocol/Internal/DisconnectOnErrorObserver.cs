@@ -28,14 +28,20 @@ namespace BattleshipProtocol.Protocol.Internal
             ConsecutiveErrorCount = 0;
         }
 
-        public async void OnError(Exception error)
+        public void OnError(Exception error)
         {
+            if (error is ProtocolTooManyErrorsException)
+            {
+                _game.Dispose();
+                return;
+            }
+
             ConsecutiveErrorCount++;
 
             if (ConsecutiveErrorCount >= ConsecutiveErrorLimit)
             {
-                await _game.PacketConnection.SendErrorAsync(new ProtocolTooManyErrorsException(ConsecutiveErrorCount));
-                _game.Dispose();
+                var tooManyError = new ProtocolTooManyErrorsException(ConsecutiveErrorCount);
+                _game.PacketConnection.BroadcastErrorToObserversInternal(tooManyError);
             }
         }
 

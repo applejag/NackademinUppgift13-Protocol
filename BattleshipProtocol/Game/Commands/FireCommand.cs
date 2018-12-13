@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Threading.Tasks;
 using BattleshipProtocol.Protocol;
 
 namespace BattleshipProtocol.Game.Commands
@@ -28,7 +29,7 @@ namespace BattleshipProtocol.Game.Commands
         };
 
         /// <inheritdoc />
-        public void OnCommand(PacketConnection context, string argument)
+        public Task OnCommandAsync(PacketConnection context, string argument)
         {
             // TODO: Validate game state
             // TODO: Fire on our grid
@@ -37,7 +38,7 @@ namespace BattleshipProtocol.Game.Commands
         }
 
         /// <inheritdoc />
-        public void OnResponse(PacketConnection context, Response response)
+        public Task OnResponseAsync(PacketConnection context, Response response)
         {
             // TODO: Validate game state
             // TODO: Register fire on their grid

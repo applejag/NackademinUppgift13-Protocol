@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Threading.Tasks;
 using BattleshipProtocol.Protocol;
+using BattleshipProtocol.Protocol.Exceptions;
 
 namespace BattleshipProtocol.Game.Commands
 {
@@ -15,20 +17,17 @@ namespace BattleshipProtocol.Game.Commands
         };
 
         /// <inheritdoc />
-        public async void OnCommand(PacketConnection context, string argument)
+        public async Task OnCommandAsync(PacketConnection context, string argument)
         {
-            await context.SendResponseAsync(new Response
-            {
-                Code = ResponseCode.ConnectionClosed,
-                Message = "Connection closed"
-            });
+            await context.SendResponseAsync(ResponseCode.ConnectionClosed, "Connection closed");
             context.Dispose();
         }
 
         /// <inheritdoc />
-        public void OnResponse(PacketConnection context, Response response)
+        public Task OnResponseAsync(PacketConnection context, Response response)
         {
             context.Dispose();
+            return Task.CompletedTask;
         }
     }
 }

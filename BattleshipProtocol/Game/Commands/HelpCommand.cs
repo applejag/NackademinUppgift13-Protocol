@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Text;
+using System.Threading.Tasks;
 using BattleshipProtocol.Protocol;
 
 namespace BattleshipProtocol.Game.Commands
@@ -13,7 +14,7 @@ namespace BattleshipProtocol.Game.Commands
         public ResponseCode[] RoutedResponseCodes { get; } = { };
 
         /// <inheritdoc />
-        public async void OnCommand(PacketConnection context, string argument)
+        public async Task OnCommandAsync(PacketConnection context, string argument)
         {
             var sb = new StringBuilder();
 
@@ -84,7 +85,7 @@ namespace BattleshipProtocol.Game.Commands
         }
 
         /// <inheritdoc />
-        public void OnResponse(PacketConnection context, Response response)
+        public Task OnResponseAsync(PacketConnection context, Response response)
         {
             throw new NotSupportedException();
         }
