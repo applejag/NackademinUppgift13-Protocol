@@ -73,8 +73,8 @@ namespace BattleshipProtocol.Protocol.Internal
                 throw new InvalidOperationException("This stream is already listening.");
             
             _listenCancellationTokenSource = new CancellationTokenSource();
-
-            Task backgroundTask = new Task(() =>
+            
+            Task.Run(() =>
             {
                 using (_readerSemaphore.Enter())
                 {
@@ -90,8 +90,6 @@ namespace BattleshipProtocol.Protocol.Internal
 
                 Monitor.Exit(_reader);
             });
-
-            backgroundTask.Start();
         }
 
         /// <summary>
