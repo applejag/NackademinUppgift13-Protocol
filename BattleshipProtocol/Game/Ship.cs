@@ -7,49 +7,49 @@ namespace BattleshipProtocol.Game
     public class Ship
     {
         /// <summary>
-        /// Ship type.
+        /// Gets the ship type.
         /// </summary>
         public ShipType Type { get; }
 
         /// <summary>
-        /// Length for bounding box of this ship.
+        /// Gets the length for bounding box of this ship.
         /// </summary>
         public int Length { get; }
 
         /// <summary>
-        /// Length of bounding box in the south direction.
+        /// Gets the length of bounding box in the south direction.
         /// </summary>
         public int LengthSouth => Orientation == Orientation.South ? Length : 1;
 
         /// <summary>
-        /// Length of bounding box in the east direction.
+        /// Gets the length of bounding box in the east direction.
         /// </summary>
         public int LengthEast => Orientation == Orientation.East ? Length : 1;
 
         /// <summary>
-        /// Remaining health of this ship.
+        /// Gets the remaining health of this ship.
         /// </summary>
         public int Health { get; }
 
         /// <summary>
-        /// The orientation of the boat. Facing.
+        /// Gets the orientation of the boat. Facing.
         /// </summary>
         public Orientation Orientation { get; private set; }
 
         /// <summary>
-        /// X position of this ship, relative to the north-west corner of the ship. 0 is far west (A). 9 is far east (J).
+        /// Gets the X position of this ship, relative to the north-west corner of the ship. 0 is far west (A). 9 is far east (J).
         /// Set to -1 if unknown or unset location (for example, pre-placed and the opponents ships).
         /// </summary>
         public int X { get; private set; } = -1;
 
         /// <summary>
-        /// Y position of this ship, relative to the north-west corner of the ship. 0 is far north (1). 9 is far south (10).
+        /// Gets the Y position of this ship, relative to the north-west corner of the ship. 0 is far north (1). 9 is far south (10).
         /// Set to -1 if unknown or unset location (for example, pre-placed and the opponents ships).
         /// </summary>
         public int Y { get; private set; } = -1;
 
         /// <summary>
-        /// Is this boat on the grid? I.e. has it been placed by the user. 
+        /// Gets whether this boat on the grid? I.e. has it been placed by the user. 
         /// </summary>
         public bool IsOnBoard => X != -1;
 
