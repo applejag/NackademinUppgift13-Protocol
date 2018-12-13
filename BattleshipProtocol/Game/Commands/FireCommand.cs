@@ -40,7 +40,7 @@ namespace BattleshipProtocol.Game.Commands
         public Task OnCommandAsync(PacketConnection context, string argument)
         {
             _game.ThrowIfWrongState(Command, GameState.InGame);
-            // TODO: Validate game state
+            
             // TODO: Fire on our grid
             // TODO: Send response of result
             throw new System.NotImplementedException();
@@ -50,7 +50,7 @@ namespace BattleshipProtocol.Game.Commands
         public Task OnResponseAsync(PacketConnection context, Response response)
         {
             _game.ThrowIfWrongState(response.Code, GameState.InGame);
-            // TODO: Validate game state
+
             // TODO: Register fire on their grid
             throw new System.NotImplementedException();
         }

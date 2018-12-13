@@ -28,8 +28,9 @@ namespace BattleshipProtocol.Game.Commands
             _game.ThrowIfNotHost(Command);
             _game.ThrowIfWrongState(Command, GameState.Idle);
 
-            // TODO: Validate game state
-            // TODO: Switch to game-phase
+            _game.GameState = GameState.InGame;
+            // TODO: Randomize player turn
+            // TODO: Send turn to remote
             throw new System.NotImplementedException();
         }
 
@@ -39,8 +40,8 @@ namespace BattleshipProtocol.Game.Commands
             _game.ThrowIfHost(response.Code);
             _game.ThrowIfWrongState(response.Code, GameState.Idle);
 
-            // TODO: Validate game state
-            // TODO: Switch to game-phase
+            _game.GameState = GameState.InGame;
+            // TODO: Set player turn
             throw new System.NotImplementedException();
         }
     }
