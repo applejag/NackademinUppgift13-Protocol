@@ -27,18 +27,22 @@ namespace BattleshipProtocol.Game.Commands
         public async Task OnCommandAsync(PacketConnection context, string argument)
         {
             _game.ThrowIfNotHost(Command);
+            _game.ThrowIfWrongState(Command, GameState.Handshake);
 
             SetNameFromArgument(argument);
 
             await context.SendResponseAsync(ResponseCode.Handshake, _game.LocalPlayer.Name);
+            _game.GameState = GameState.Idle;
         }
 
         /// <inheritdoc />
         public Task OnResponseAsync(PacketConnection context, Response response)
         {
             _game.ThrowIfHost(response.Code);
+            _game.ThrowIfWrongState(response.Code, GameState.Handshake);
 
             SetNameFromArgument(response.Message);
+            _game.GameState = GameState.Idle;
             return Task.CompletedTask;
         }
 

@@ -28,5 +28,17 @@ namespace BattleshipProtocol.Protocol.Internal.Extensions
             if (!game.IsHost)
                 throw new ProtocolBoundedResponseException(responseCode, "client");
         }
+
+        public static void ThrowIfWrongState([NotNull] this BattleGame game, [NotNull] string commandName, GameState expected)
+        {
+            if (game.GameState != expected)
+                throw new ProtocolInvalidStateCommandException(commandName, expected, game.GameState);
+        }
+
+        public static void ThrowIfWrongState([NotNull] this BattleGame game, ResponseCode responseCode, GameState expected)
+        {
+            if (game.GameState != expected)
+                throw new ProtocolInvalidStateResponseException(responseCode, expected, game.GameState);
+        }
     }
 }

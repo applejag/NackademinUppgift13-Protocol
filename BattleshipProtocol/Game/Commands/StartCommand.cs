@@ -26,7 +26,8 @@ namespace BattleshipProtocol.Game.Commands
         public Task OnCommandAsync(PacketConnection context, string argument)
         {
             _game.ThrowIfNotHost(Command);
-            
+            _game.ThrowIfWrongState(Command, GameState.Idle);
+
             // TODO: Validate game state
             // TODO: Switch to game-phase
             throw new System.NotImplementedException();
@@ -36,6 +37,7 @@ namespace BattleshipProtocol.Game.Commands
         public Task OnResponseAsync(PacketConnection context, Response response)
         {
             _game.ThrowIfHost(response.Code);
+            _game.ThrowIfWrongState(response.Code, GameState.Idle);
 
             // TODO: Validate game state
             // TODO: Switch to game-phase

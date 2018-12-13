@@ -55,6 +55,10 @@
     <Compile Include="Game\Ship.cs" />
     <Compile Include="Game\ShipType.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Protocol\Exceptions\ProtocolInvalidStateResponseException.cs" />
+    <Compile Include="Protocol\Exceptions\ProtocolInvalidStateCommandException.cs" />
+    <Compile Include="Protocol\Exceptions\ProtocolInvalidStateException.cs" />
+    <Compile Include="Protocol\GameState.cs" />
     <Compile Include="Protocol\Exceptions\ProtocolBoundedResponseException.cs" />
     <Compile Include="Protocol\Exceptions\ProtocolBoundedCommandException.cs" />
     <Compile Include="Protocol\Exceptions\ProtocolTooManyErrorsException.cs" />

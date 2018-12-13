@@ -36,6 +36,11 @@ namespace BattleshipProtocol
         [NotNull]
         public Player RemotePlayer { get; }
 
+        /// <summary>
+        /// Gets or sets the state of the connection and game.
+        /// </summary>
+        public GameState GameState { get; set; }
+
         public PacketConnection PacketConnection { get; }
 
         private BattleGame(TcpClient client, PacketConnection packetConnection, Board localBoard, string playerName, bool isHost)
@@ -48,15 +53,17 @@ namespace BattleshipProtocol
             _client = client;
             PacketConnection = packetConnection;
 
-            packetConnection.RegisterCommand(new FireCommand());
+            packetConnection.RegisterCommand(new FireCommand(this));
             packetConnection.RegisterCommand(new HelloCommand(this));
             packetConnection.RegisterCommand(new HelpCommand());
             packetConnection.RegisterCommand(new StartCommand(this));
             packetConnection.RegisterCommand(new QuitCommand(this));
 
             ForwardErrorsObserver.SubscribeTo(this);
+            PacketConnection.Subscribe(new PacketObserver(this));
 
             PacketConnection.BeginListening();
+            GameState = GameState.Handshake;
         }
 
         /// <summary>
@@ -161,6 +168,29 @@ namespace BattleshipProtocol
         public virtual void Dispose()
         {
             _client.Dispose();
+        }
+
+        private class PacketObserver : IObserver<IPacket>
+        {
+            private readonly BattleGame _game;
+
+            public PacketObserver(BattleGame game)
+            {
+                _game = game;
+            }
+
+            public void OnNext(IPacket value)
+            {
+            }
+
+            public void OnError(Exception error)
+            {
+            }
+
+            public void OnCompleted()
+            {
+                _game.GameState = GameState.Disconnected;
+            }
         }
     }
 }
