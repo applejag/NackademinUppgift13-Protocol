@@ -15,18 +15,20 @@ namespace BattleshipProtocol.Game.Commands
         };
 
         /// <inheritdoc />
-        public void OnCommand(PacketConnection context, string argument)
+        public async void OnCommand(PacketConnection context, string argument)
         {
-            // TODO: Close connection
-            // TODO: Send 270
-            throw new System.NotImplementedException();
+            await context.SendResponseAsync(new Response
+            {
+                Code = ResponseCode.ConnectionClosed,
+                Message = "Connection closed"
+            });
+            context.Dispose();
         }
 
         /// <inheritdoc />
         public void OnResponse(PacketConnection context, Response response)
         {
-            // TODO: Is 270? Then close connection
-            throw new NotSupportedException();
+            context.Dispose();
         }
     }
 }
