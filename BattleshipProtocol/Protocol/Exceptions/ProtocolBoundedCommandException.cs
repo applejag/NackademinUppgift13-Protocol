@@ -11,7 +11,7 @@ namespace BattleshipProtocol.Protocol.Exceptions
         public string LockedCommand { get; set; }
 
         public ProtocolBoundedCommandException([NotNull] string lockedCommand, string bound)
-            : base(ResponseCode.SyntaxError, $"Syntax error: Command {lockedCommand.ToUpperInvariant()} cannot be sent by a host.")
+            : base(ResponseCode.SyntaxError, $"Syntax error: Command {lockedCommand.ToUpperInvariant()} cannot be sent by a {bound}.")
         {
             LockedCommand = lockedCommand;
         }
