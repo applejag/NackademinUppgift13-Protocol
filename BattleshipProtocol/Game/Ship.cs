@@ -38,13 +38,13 @@ namespace BattleshipProtocol.Game
 
         /// <summary>
         /// Gets the X position of this ship, relative to the north-west corner of the ship. 0 is far west (A). 9 is far east (J).
-        /// Set to -1 if unknown or unset location (for example, pre-placed and the opponents ships).
+        /// Is set to -1 if unknown or unset location (for example, pre-placed and the opponents ships).
         /// </summary>
         public int X { get; private set; } = -1;
 
         /// <summary>
         /// Gets the Y position of this ship, relative to the north-west corner of the ship. 0 is far north (1). 9 is far south (10).
-        /// Set to -1 if unknown or unset location (for example, pre-placed and the opponents ships).
+        /// Is set to -1 if unknown or unset location (for example, pre-placed and the opponents ships).
         /// </summary>
         public int Y { get; private set; } = -1;
 
@@ -53,7 +53,7 @@ namespace BattleshipProtocol.Game
         /// </summary>
         public bool IsOnBoard => X != -1;
 
-        public Ship(ShipType type)
+        public Ship(in ShipType type)
         {
             Type = type;
             Length = GetShipLength(type);
@@ -64,41 +64,31 @@ namespace BattleshipProtocol.Game
         /// <summary>
         /// Sets the position values of this ship. Throws error if outside the grid. Does not check for collision with other boats.
         /// </summary>
-        /// <exception cref="ArgumentOutOfRangeException">If <paramref name="x"/> is outside the map.</exception>
-        /// <exception cref="ArgumentOutOfRangeException">If <paramref name="x"/>+<see cref="Length"/> is outside the map and iff <paramref name="orientation"/> is <see cref="Game.Orientation.South">South</see>.</exception>
-        /// <exception cref="ArgumentOutOfRangeException">If <paramref name="y"/> is outside the map.</exception>
-        /// <exception cref="ArgumentOutOfRangeException">If <paramref name="y"/>+<see cref="Length"/> is outside the map and iff <paramref name="orientation"/> is <see cref="Game.Orientation.East">East</see>.</exception>
-        /// <param name="x">X position to check. 0 is far west (A). 9 is far east (J).</param>
-        /// <param name="y">Y position to check. 0 is far north (1). 9 is far south (10).</param>
+        /// <exception cref="ArgumentOutOfRangeException">If <paramref name="coordinate"/>+<see cref="Length"/> is beyond the east map boundary when <paramref name="orientation"/> is <see cref="Game.Orientation.South">South</see>.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">If <paramref name="coordinate"/>+<see cref="Length"/> is beyond the south map boundary when <paramref name="orientation"/> is <see cref="Game.Orientation.East">East</see>.</exception>
+        /// <param name="coordinate">The position to check.</param>
         /// <param name="orientation">The orientation. Facing north or facing east.</param>
-        internal void SetPositionInternal(int x, int y, Orientation orientation)
+        internal void SetPositionInternal(in Coordinate coordinate, in Orientation orientation)
         {
-            if (x < 0 || x > 9)
-                throw new ArgumentOutOfRangeException(nameof(x), "Valid position ranges from 0-9.");
+            if (coordinate.X > 10 - LengthEast)
+                throw new ArgumentOutOfRangeException(nameof(coordinate), "Ship is lapping outside the map on the east edge due to length and orientation.");
 
-            if (y < 0 || y > 9)
-                throw new ArgumentOutOfRangeException(nameof(y), "Valid position ranges from 0-9.");
+            if (coordinate.Y > 10 - LengthSouth)
+                throw new ArgumentOutOfRangeException(nameof(coordinate), "Ship is lapping outside the map on the south edge due to length and orientation.");
 
-            if (x > 10 - LengthEast)
-                throw new ArgumentOutOfRangeException(nameof(x), "Ship is lapping outside the map on the east edge due to length and orientation.");
-
-            if (y > 10 - LengthSouth)
-                throw new ArgumentOutOfRangeException(nameof(x), "Ship is lapping outside the map on the south edge due to length and orientation.");
-
-            X = x;
-            Y = y;
+            X = coordinate.X;
+            Y = coordinate.Y;
             Orientation = orientation;
         }
 
         /// <summary>
         /// Would this ship collide with a ship that would be placed at this location, with this orientation, and with that length?
         /// </summary>
-        /// <param name="otherX">X position of theoretical other ship. 0 is far west (A). 9 is far east (J).</param>
-        /// <param name="otherY">Y position of theoretical other ship. 0 is far north (1). 9 is far south (10).</param>
+        /// <param name="other">Position of theoretical other ship.</param>
         /// <param name="otherOrientation">The orientation of theoretical other ship. Facing north or facing east.</param>
         /// <param name="otherLength">Length of theoretical other ship.</param>
         [Pure]
-        public bool WillCollide(int otherX, int otherY, Orientation otherOrientation, int otherLength)
+        public bool WillCollide(in Coordinate other, in Orientation otherOrientation, in int otherLength)
         {
             if (!IsOnBoard)
                 return false;
@@ -108,12 +98,12 @@ namespace BattleshipProtocol.Game
                 switch (otherOrientation)
                 {
                     case Orientation.East:
-                        return otherY == Y
-                               && !(X >= otherX + otherLength || otherX >= X + Length);
+                        return other.Y == Y
+                               && !(X >= other.X + otherLength || other.X >= X + Length);
 
                     case Orientation.South:
-                        return otherX == X
-                               && !(Y >= otherY + otherLength || otherY >= Y + Length);
+                        return other.X == X
+                               && !(Y >= other.Y + otherLength || other.Y >= Y + Length);
 
                     default:
                         return false;
@@ -123,12 +113,12 @@ namespace BattleshipProtocol.Game
             switch (otherOrientation)
             {
                 case Orientation.South:
-                    return !(Y < otherY || Y >= otherY + otherLength
-                                   || X > otherX || otherX >= X + Length);
+                    return !(Y < other.Y || Y >= other.Y + otherLength
+                                   || X > other.X || other.X >= X + Length);
 
                 case Orientation.East:
-                    return !(Y > otherY || otherY >= Y + Length
-                                   || X < otherX || X >= otherX + otherLength);
+                    return !(Y > other.Y || other.Y >= Y + Length
+                                   || X < other.X || X >= other.X + otherLength);
 
                 default:
                     return false;
@@ -138,14 +128,14 @@ namespace BattleshipProtocol.Game
         /// <summary>
         /// Is this coordinate on this ship?
         /// </summary>
-        /// <param name="x">X position to check. 0 is far west (A). 9 is far east (J).</param>
-        /// <param name="y">Y position to check. 0 is far north (1). 9 is far south (10).</param>
-        public bool IsOnShip(int x, int y)
+        /// <param name="coordinate">Position to check.</param>
+        [Pure]
+        public bool IsOnShip(in Coordinate coordinate)
         {
             switch (Orientation)
             {
-                case Orientation.East when x >= X && x < X + Length && y == Y:
-                case Orientation.South when x == X && y >= Y && y < Y + Length:
+                case Orientation.East when coordinate.X >= X && coordinate.X < X + Length && coordinate.Y == Y:
+                case Orientation.South when coordinate.X == X && coordinate.Y >= Y && coordinate.Y < Y + Length:
                     return true;
             }
 
@@ -158,7 +148,7 @@ namespace BattleshipProtocol.Game
         /// <exception cref="InvalidEnumArgumentException"></exception>
         /// <param name="type">The ship type.</param>
         [Pure]
-        public static int GetShipLength(ShipType type)
+        public static int GetShipLength(in ShipType type)
         {
             switch (type)
             {

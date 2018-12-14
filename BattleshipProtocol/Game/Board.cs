@@ -29,7 +29,7 @@ namespace BattleshipProtocol.Game
         /// </summary>
         /// <param name="type">The ship type.</param>
         [NotNull, Pure]
-        public Ship GetShip(ShipType type)
+        public Ship GetShip(in ShipType type)
         {
             foreach (Ship ship in Ships)
             {
@@ -44,17 +44,10 @@ namespace BattleshipProtocol.Game
         /// Shoot at a grid location.
         /// </summary>
         /// <exception cref="ArgumentOutOfRangeException">If position from <paramref name="x"/> and <paramref name="y"/> is outside the grid.</exception>
-        /// <param name="x">X position to check. 0 is far west (A). 9 is far east (J).</param>
-        /// <param name="y">Y position to check. 0 is far north (1). 9 is far south (10).</param>
-        internal void ShootAtInternal(int x, int y)
+        /// <param name="coordinate">Position to check.</param>
+        internal void ShootAtInternal(in Coordinate coordinate)
         {
-            if (x < 0 || x > 9)
-                throw new ArgumentOutOfRangeException(nameof(x), "Valid position ranges from 0-9.");
-
-            if (y < 0 || y > 9)
-                throw new ArgumentOutOfRangeException(nameof(y), "Valid position ranges from 0-9.");
-
-            if (IsShotAt(x, y))
+            if (IsShotAt(in coordinate))
                 throw new InvalidOperationException("Board has already been shot at that location.");
 
             // TODO: Logic for sending shot command
@@ -63,69 +56,49 @@ namespace BattleshipProtocol.Game
         /// <summary>
         /// Get the ship at position.
         /// </summary>
-        /// <param name="x">X position to check. 0 is far west (A). 9 is far east (J).</param>
-        /// <param name="y">Y position to check. 0 is far north (1). 9 is far south (10).</param>
+        /// <param name="coordinate">Position to check.</param>
         [CanBeNull, Pure]
-        public Ship GetShipAt(int x, int y)
+        public Ship GetShipAt(in Coordinate coordinate)
         {
-            if (x < 0 || x > 9)
-                throw new ArgumentOutOfRangeException(nameof(x), "Valid position ranges from 0-9.");
+            foreach (Ship ship in Ships)
+            {
+                if (ship.IsOnShip(in coordinate))
+                    return ship;
+            }
 
-            if (y < 0 || y > 9)
-                throw new ArgumentOutOfRangeException(nameof(y), "Valid position ranges from 0-9.");
-
-            return Ships.FirstOrDefault(ship => ship.IsOnShip(x, y));
+            return null;
         }
 
         /// <summary>
         /// Has this position been shot at?
         /// </summary>
-        /// <param name="x">X position to check. 0 is far west (A). 9 is far east (J).</param>
-        /// <param name="y">Y position to check. 0 is far north (1). 9 is far south (10).</param>
+        /// <param name="coordinate">Position to check.</param>
         [Pure]
-        public bool IsShotAt(int x, int y)
+        public bool IsShotAt(in Coordinate coordinate)
         {
-            if (x < 0 || x > 9)
-                throw new ArgumentOutOfRangeException(nameof(x), "Valid position ranges from 0-9.");
-
-            if (y < 0 || y > 9)
-                throw new ArgumentOutOfRangeException(nameof(y), "Valid position ranges from 0-9.");
-
-            return _shots[x, y];
+            return _shots[coordinate.X, coordinate.Y];
         }
 
         /// <summary>
         /// Moves a ship to a new location on this grid. Throws error if placed outside grid or collides with other ship.
         /// </summary>
-        /// <exception cref="ArgumentOutOfRangeException">If <paramref name="x"/> is outside the map.</exception>
-        /// <exception cref="ArgumentOutOfRangeException">If <paramref name="x"/>+<see cref="Ship.Length"/> is outside the map and iff <paramref name="orientation"/> is <see cref="Game.Orientation.South">South</see>.</exception>
-        /// <exception cref="ArgumentOutOfRangeException">If <paramref name="y"/> is outside the map.</exception>
-        /// <exception cref="ArgumentOutOfRangeException">If <paramref name="y"/>+<see cref="Ship.Length"/> is outside the map and iff <paramref name="orientation"/> is <see cref="Game.Orientation.East">East</see>.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">If <paramref name="coordinate"/>+<see cref="Ship.LengthEast"/> is outside the map.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">If <paramref name="coordinate"/>+<see cref="Ship.LengthSouth"/> is outside the map.</exception>
         /// <exception cref="InvalidOperationException">If ship collides with other ship.</exception>
         /// <param name="shipType">The type of the ship to move.</param>
-        /// <param name="x">X position to check. 0 is far west (A). 9 is far east (J).</param>
-        /// <param name="y">Y position to check. 0 is far north (1). 9 is far south (10).</param>
+        /// <param name="coordinate">Position to check.</param>
         /// <param name="orientation">The orientation. Facing north or facing east.</param>
-        public void MoveShip(ShipType shipType, int x, int y, Orientation orientation)
+        public void MoveShip(ShipType shipType, in Coordinate coordinate, in Orientation orientation)
         {
-            Ship ship = GetShip(shipType);
+            Ship ship = GetShip(in shipType);
 
-            if (x < 0 || x > 9)
-                throw new ArgumentOutOfRangeException(nameof(x), "Valid position ranges from 0-9.");
+            foreach (Ship other in Ships)
+            {
+                if (other.WillCollide(in coordinate, in orientation, ship.Length))
+                    throw new InvalidOperationException("Cannot move ship to that location due to collision with other ship!");
+            }
 
-            if (y < 0 || y > 9)
-                throw new ArgumentOutOfRangeException(nameof(y), "Valid position ranges from 0-9.");
-
-            if (x > 10 - ship.LengthEast)
-                throw new ArgumentOutOfRangeException(nameof(x), "Ship is lapping outside the map on the east edge due to length and orientation.");
-
-            if (y > 10 - ship.LengthSouth)
-                throw new ArgumentOutOfRangeException(nameof(x), "Ship is lapping outside the map on the south edge due to length and orientation.");
-
-            if (Ships.Any(other => other.WillCollide(x, y, orientation, ship.Length)))
-                throw new InvalidOperationException("Cannot move ship to that location due to collision with other ship!");
-
-            ship.SetPositionInternal(x, y, orientation);
+            ship.SetPositionInternal(in coordinate, in orientation);
         }
 
         /// <summary>
