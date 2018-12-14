@@ -77,6 +77,27 @@ namespace BattleshipProtocol
             await PacketConnection.SendCommandAsync<FireCommand>(coordinate.ToString());
         }
 
+        /// <summary>
+        /// Sends a start game message.
+        /// The response will follow in a response packet and be handled automatically by <see cref="StartCommand"/>.
+        /// </summary>
+        /// <exception cref="InvalidOperationException">Not in <see cref="Protocol.GameState.Idle"/> state. Use <see cref="BattleGame.GameState"/>.</exception>
+        /// <exception cref="InvalidOperationException">You're not the client. Only client can start the game.</exception>
+        /// <exception cref="InvalidOperationException">No START command has been registered.</exception>
+        public async Task StartGameAsync()
+        {
+            if (IsHost)
+                throw new InvalidOperationException("Game can only be started from the client.");
+            if (GameState != GameState.Idle)
+                throw new InvalidOperationException("You can only start a game while in idle state.");
+
+            var startCommand = PacketConnection.GetCommand<StartCommand>();
+            if (startCommand is null)
+                throw new InvalidOperationException("No START command has been registered.");
+
+            await PacketConnection.SendCommandAsync<StartCommand>();
+        }
+
         private BattleGame(TcpClient client, PacketConnection packetConnection, Board localBoard, string playerName, bool isHost)
         {
             IsHost = isHost;
