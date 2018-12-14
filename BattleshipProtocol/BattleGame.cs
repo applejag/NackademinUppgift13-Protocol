@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Linq;
-using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 using BattleshipProtocol.Game;
@@ -47,6 +46,36 @@ namespace BattleshipProtocol
         public bool IsLocalsTurn { get; set; }
 
         public PacketConnection PacketConnection { get; }
+
+        /// <summary>
+        /// Shoots at a given <paramref name="coordinate"/> parameter via the <see cref="FireCommand"/> command.
+        /// The response will follow in a response packet and be handled automatically by <see cref="FireCommand"/>.
+        /// </summary>
+        /// <param name="coordinate">The coordinate to shoot at.</param>
+        /// <exception cref="InvalidOperationException">Not in <see cref="Protocol.GameState.InGame"/> state. Use <see cref="BattleGame.GameState"/>.</exception>
+        /// <exception cref="InvalidOperationException">It's not your turn. Use <see cref="IsLocalsTurn"/>.</exception>
+        /// <exception cref="InvalidOperationException">No FIRE command has been registered.</exception>
+        /// <exception cref="InvalidOperationException">A FIRE command is already pending.</exception>
+        /// <exception cref="ArgumentException">Coordinate has already been shot at.</exception>
+        public async Task ShootAtAsync(Coordinate coordinate)
+        {
+            if (GameState != GameState.InGame)
+                throw new InvalidOperationException("You can only FIRE when in-game.");
+            if (!IsLocalsTurn)
+                throw new InvalidOperationException("You can only FIRE when it's your turn.");
+            if (RemotePlayer.Board.IsShotAt(coordinate))
+                throw new ArgumentException("Coordinate has already been shot at.", nameof(coordinate));
+
+            var fireCommand = PacketConnection.GetCommand<FireCommand>();
+            if (fireCommand is null)
+                throw new InvalidOperationException("No FIRE command has been registered.");
+
+            if (fireCommand.WaitingForResponseAt.HasValue)
+                throw new InvalidOperationException("A FIRE command is already pending. Awaiting response...");
+
+            fireCommand.WaitingForResponseAt = coordinate;
+            await PacketConnection.SendCommandAsync<FireCommand>(coordinate.ToString());
+        }
 
         private BattleGame(TcpClient client, PacketConnection packetConnection, Board localBoard, string playerName, bool isHost)
         {
