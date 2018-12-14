@@ -7,6 +7,11 @@ namespace BattleshipProtocol.Game
     public class Ship
     {
         /// <summary>
+        /// Gets the ship name.
+        /// </summary>
+        public string Name { get; }
+
+        /// <summary>
         /// Gets the ship type.
         /// </summary>
         public ShipType Type { get; }
@@ -55,8 +60,9 @@ namespace BattleshipProtocol.Game
 
         public Ship(in ShipType type)
         {
+            Name = GetShipName(in type);
             Type = type;
-            Length = GetShipLength(type);
+            Length = GetShipLength(in type);
             Health = Length;
             Orientation = Orientation.South;
         }
@@ -169,6 +175,25 @@ namespace BattleshipProtocol.Game
             }
 
             throw new InvalidEnumArgumentException(nameof(type), (int)type, typeof(ShipType));
+        }
+
+        private static string GetShipName(in ShipType shipType)
+        {
+            switch (shipType)
+            {
+                case ShipType.Carrier:
+                    return "Carrier";
+                case ShipType.Battleship:
+                    return "Battleship";
+                case ShipType.Destroyer:
+                    return "Destroyer";
+                case ShipType.Submarine:
+                    return "Submarine";
+                case ShipType.PatrolBoat:
+                    return "Patrol boat";
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(shipType), shipType, null);
+            }
         }
     }
 }

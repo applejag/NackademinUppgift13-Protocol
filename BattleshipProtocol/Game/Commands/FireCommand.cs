@@ -69,15 +69,8 @@ namespace BattleshipProtocol.Game.Commands
             if (WaitingForResponseAt is null)
                 throw new ProtocolException(ResponseCode.SequenceError, $"Sequence error: Awaiting {Command} command.");
 
-            try
-            {
-                RegisterShot(WaitingForResponseAt.Value, response);
-            }
-            finally
-            {
-                WaitingForResponseAt = null;
-                _game.IsLocalsTurn = false;
-            }
+            RegisterShot(WaitingForResponseAt.Value, response);
+
 
             return Task.CompletedTask;
         }
@@ -93,7 +86,7 @@ namespace BattleshipProtocol.Game.Commands
                 return context.SendResponseAsync(ResponseCode.FireMiss, "Miss!");
 
             if (ship.Health > 0)
-                return context.SendResponseAsync(GetResponseCode(ship.Type, sunk: false));
+                return context.SendResponseAsync(GetResponseCode(ship.Type, sunk: false), $"You hit my {ship.Name}");
 
             if (_game.LocalPlayer.Board.Ships.All(s => s.Health == 0))
             {
@@ -102,7 +95,7 @@ namespace BattleshipProtocol.Game.Commands
                 return context.SendResponseAsync(ResponseCode.FireYouWin, "You win!");
             }
 
-            return context.SendResponseAsync(GetResponseCode(ship.Type, sunk: true));
+            return context.SendResponseAsync(GetResponseCode(ship.Type, sunk: true), $"You sunk my {ship.Name}");
         }
 
         private Coordinate GetCoordinate(string argument)
@@ -127,7 +120,7 @@ namespace BattleshipProtocol.Game.Commands
             }
             catch (Exception)
             {
-                throw new ProtocolException(ResponseCode.SyntaxError, "Syntax error: Unable to parse coordinate!");
+                throw new ProtocolException(ResponseCode.SyntaxError, "Syntax error: Unable to parse coordinate.");
             }
 
             return coordinate;
@@ -136,30 +129,91 @@ namespace BattleshipProtocol.Game.Commands
         private void RegisterShot(in Coordinate coordinate, Response response)
         {
             if (_game.RemotePlayer.Board.IsShotAt(in coordinate))
-                throw new ProtocolException(ResponseCode.SequenceError,
-                    $"Sequence error: {WaitingForResponseAt} was already fired upon. Ignoring response.");
-
-            if (response.Code == ResponseCode.FireYouWin)
             {
-                _game.GameState = GameState.Idle;
+                WaitingForResponseAt = null;
+                _game.IsLocalsTurn = false;
 
-                Ship[] lastShips = _game.RemotePlayer.Board.Ships.Where(s => s.Health > 0).ToArray();
-
-                // No ships lets?
-                if (lastShips.Length == 0)
-                    throw new ProtocolException(ResponseCode.SequenceError, "There were no ships remaining!");
-
-                // Cant evaluate which ship got shot
-                if (lastShips.Length > 1)
-                    throw new ProtocolException(ResponseCode.SequenceError,
-                        $"Sequence error: There are more than one ship remaining.");
-
-                _game.RemotePlayer.Board.RegisterShot(in coordinate, lastShips[0].Type);
+                throw new ProtocolException(ResponseCode.SequenceError,
+                    $"Sequence error: {WaitingForResponseAt} was already fired upon. Ignores response.");
             }
-            else if (response.Code == ResponseCode.FireMiss)
-                _game.RemotePlayer.Board.RegisterShot(in coordinate, null);
-            else
-                _game.RemotePlayer.Board.RegisterShot(in coordinate, GetShipType(response.Code));
+
+            switch (response.Code)
+            {
+                case ResponseCode.FireYouWin:
+                    {
+                        _game.GameState = GameState.Idle;
+
+                        Ship[] lastShips = _game.RemotePlayer.Board.Ships.Where(s => s.Health > 0).ToArray();
+
+                        // No ships lets?
+                        if (lastShips.Length == 0)
+                            throw new ProtocolException(ResponseCode.SequenceError,
+                                $"Sequence error: Received {(short)ResponseCode.FireYouWin}, but there were no ships remaining.");
+
+                        // Cant evaluate which ship got shot
+                        if (lastShips.Length > 1)
+                            throw new ProtocolException(ResponseCode.SequenceError,
+                                $"Sequence error: Received {(short)ResponseCode.FireYouWin}, but there are more than one ship remaining.");
+
+                        _game.RemotePlayer.Board.RegisterShot(in coordinate, lastShips[0].Type);
+
+                        WaitingForResponseAt = null;
+                        _game.IsLocalsTurn = false;
+                        break;
+                    }
+                case ResponseCode.FireMiss:
+                    _game.RemotePlayer.Board.RegisterShot(in coordinate, null);
+
+                    WaitingForResponseAt = null;
+                    _game.IsLocalsTurn = false;
+                    break;
+                default:
+                    {
+                        // Response was a hit or sunk
+                        Ship ship = _game.RemotePlayer.Board.RegisterShot(in coordinate, GetShipType(response.Code));
+
+                        WaitingForResponseAt = null;
+                        _game.IsLocalsTurn = false;
+
+                        if (_game.RemotePlayer.Board.Ships.All(s => s.Health == 0))
+                        {
+                            _game.GameState = GameState.Idle;
+
+                            throw new ProtocolException(ResponseCode.SequenceError,
+                                $"Sequence error: Last ship was sunk but no {(short)ResponseCode.FireYouWin}. Assuming victory.");
+                        }
+
+                        bool isSunkCode = IsSunkCode(response.Code);
+                        if (ship?.Health > 0 && isSunkCode)
+                        {
+                            throw new ProtocolException(ResponseCode.SequenceError,
+                                $"Sequence error: Received ship sunk but ship has {ship.Health} health left. Assuming hit.");
+                        }
+
+                        if (ship?.Health == 0 && !isSunkCode)
+                        {
+                            throw new ProtocolException(ResponseCode.SequenceError,
+                                $"Sequence error: Received ship hit but ship has {ship.Health} health left. Assuming sunk.");
+                        }
+
+                        break;
+                    }
+            }
+        }
+
+        private static bool IsSunkCode(ResponseCode responseCode)
+        {
+            switch (responseCode)
+            {
+                case ResponseCode.FireSunkCarrier:
+                case ResponseCode.FireSunkBattleship:
+                case ResponseCode.FireSunkDestroyer:
+                case ResponseCode.FireSunkSubmarine:
+                case ResponseCode.FireSunkPatrolBoat:
+                    return true;
+            }
+
+            return false;
         }
 
         [Pure]
