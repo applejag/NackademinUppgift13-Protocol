@@ -2,7 +2,7 @@
 
 namespace BattleshipProtocol.Protocol.Exceptions
 {
-    public class ProtocolInvalidStateException : ProtocolException
+    public abstract class ProtocolInvalidStateException : ProtocolException
     {
         public GameState ExpectedState { get; }
         public GameState ActualState { get; }

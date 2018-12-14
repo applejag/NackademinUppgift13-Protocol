@@ -29,7 +29,7 @@ namespace BattleshipProtocol.Game
         /// <summary>
         /// Gets the remaining health of this ship.
         /// </summary>
-        public int Health { get; }
+        public int Health { get; internal set; }
 
         /// <summary>
         /// Gets the orientation of the boat. Facing.

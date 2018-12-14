@@ -39,6 +39,12 @@ namespace BattleshipProtocol.Game
         /// </summary>
         public char Vertical => VerticalLetters[Y];
 
+        public Coordinate(int x, int y) : this()
+        {
+            X = x;
+            Y = y;
+        }
+
         [Pure]
         private static int Validate(in int input)
         {
@@ -79,6 +85,11 @@ namespace BattleshipProtocol.Game
                 throw new ArgumentOutOfRangeException(nameof(xStr), "X must be between 1 and 10!");
             }
 
+            if (y == -1)
+            {
+                throw new ArgumentOutOfRangeException(nameof(yStr), "Y must be between A and J!");
+            }
+
             return new Coordinate
             {
                 X = x - 1,
@@ -89,6 +100,25 @@ namespace BattleshipProtocol.Game
         public override string ToString()
         {
             return $"{Vertical}{Horizontal}";
+        }
+
+        [Pure]
+        public static implicit operator Coordinate((int x, int y) coordinate)
+        {
+            return new Coordinate(coordinate.x, coordinate.y);
+        }
+
+        [Pure]
+        public static implicit operator (int x, int y)(Coordinate coordinate)
+        {
+            return (coordinate.X, coordinate.Y);
+        }
+
+        [Pure]
+        public void Deconstruct(out int x, out int y)
+        {
+            x = X;
+            y = Y;
         }
     }
 }

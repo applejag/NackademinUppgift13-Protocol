@@ -21,7 +21,7 @@ namespace BattleshipProtocol.Game
 
         public Board()
         {
-            Ships = Array.ConvertAll((ShipType[]) Enum.GetValues(typeof(ShipType)), s => new Ship(s));
+            Ships = Array.ConvertAll((ShipType[])Enum.GetValues(typeof(ShipType)), s => new Ship(s));
         }
 
         /// <summary>
@@ -41,16 +41,47 @@ namespace BattleshipProtocol.Game
         }
 
         /// <summary>
-        /// Shoot at a grid location.
+        /// Register a shot and decrement the ships health. Returns the ship that was shot, if any.
         /// </summary>
-        /// <exception cref="ArgumentOutOfRangeException">If position from <paramref name="x"/> and <paramref name="y"/> is outside the grid.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">If position from <paramref name="coordinate"/> is outside the grid.</exception>
+        /// <exception cref="InvalidOperationException">If board has already been shot at the given <paramref name="coordinate"/></exception>
         /// <param name="coordinate">Position to check.</param>
-        internal void ShootAtInternal(in Coordinate coordinate)
+        /// <param name="hitShip">The ship that was hit, or null for miss.</param>
+        [CanBeNull]
+        internal Ship RegisterShot(in Coordinate coordinate, in ShipType? hitShip)
         {
             if (IsShotAt(in coordinate))
-                throw new InvalidOperationException("Board has already been shot at that location.");
+                throw new InvalidOperationException($"Board has already been shot at {coordinate}");
 
-            // TODO: Logic for sending shot command
+            _shots[coordinate.X, coordinate.Y] = true;
+
+            Ship ship = hitShip.HasValue ? GetShip(hitShip.Value) : null;
+
+            if (ship is null)
+                return null;
+
+            if (ship.Health == 0)
+            {
+                throw new InvalidOperationException($"Ship has already been sunk.");
+            }
+
+            ship.Health--;
+            return ship;
+        }
+
+        /// <summary>
+        /// Shoot at a grid location. Returns the ship that was shot, if any.
+        /// </summary>
+        /// <exception cref="ArgumentOutOfRangeException">If position from <paramref name="coordinate"/> is outside the grid.</exception>
+        /// <exception cref="InvalidOperationException">If board has already been shot at the given <paramref name="coordinate"/></exception>
+        /// <param name="coordinate">Position to check.</param>
+        [CanBeNull]
+        internal Ship ShootAtInternal(in Coordinate coordinate)
+        {
+            Ship ship = GetShipAt(in coordinate);
+            RegisterShot(coordinate, ship?.Type);
+
+            return ship;
         }
 
         /// <summary>

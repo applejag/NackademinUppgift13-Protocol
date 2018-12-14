@@ -40,5 +40,17 @@ namespace BattleshipProtocol.Protocol.Internal.Extensions
             if (game.GameState != expected)
                 throw new ProtocolInvalidStateResponseException(responseCode, expected, game.GameState);
         }
+
+        public static void ThrowIfLocalsTurn([NotNull] this BattleGame game)
+        {
+            if (game.IsLocalsTurn)
+                throw new ProtocolPlayerTurnException(true);
+        }
+
+        public static void ThrowIfNotLocalsTurn([NotNull] this BattleGame game)
+        {
+            if (!game.IsLocalsTurn)
+                throw new ProtocolPlayerTurnException(false);
+        }
     }
 }
