@@ -209,7 +209,7 @@ namespace BattleshipProtocol.Protocol.Internal
         /// <param name="code">The response code to transmit.</param>
         /// <param name="message">The optional message to append to the response.</param>
         /// <exception cref="InvalidOperationException">Thrown if the connection has been closed.</exception>
-        public Task SendResponseAsync(ResponseCode code, [CanBeNull] string message)
+        public Task SendResponseAsync(ResponseCode code, [CanBeNull] string message = null)
         {
             return SendResponseAsync(new Response(code, message));
         }

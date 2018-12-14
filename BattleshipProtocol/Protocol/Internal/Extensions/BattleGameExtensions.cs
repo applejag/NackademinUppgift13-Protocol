@@ -8,25 +8,25 @@ namespace BattleshipProtocol.Protocol.Internal.Extensions
         public static void ThrowIfHost([NotNull] this BattleGame game, [NotNull] string commandName)
         {
             if (game.IsHost)
-                throw new ProtocolBoundedCommandException(commandName, "host");
+                throw new ProtocolBoundedCommandException(commandName, "client");
         }
 
         public static void ThrowIfHost([NotNull] this BattleGame game, ResponseCode responseCode)
         {
             if (game.IsHost)
-                throw new ProtocolBoundedResponseException(responseCode, "host");
+                throw new ProtocolBoundedResponseException(responseCode, "client");
         }
 
         public static void ThrowIfNotHost([NotNull] this BattleGame game, [NotNull] string commandName)
         {
             if (!game.IsHost)
-                throw new ProtocolBoundedCommandException(commandName, "client");
+                throw new ProtocolBoundedCommandException(commandName, "host");
         }
 
         public static void ThrowIfNotHost([NotNull] this BattleGame game, ResponseCode responseCode)
         {
             if (!game.IsHost)
-                throw new ProtocolBoundedResponseException(responseCode, "client");
+                throw new ProtocolBoundedResponseException(responseCode, "host");
         }
 
         public static void ThrowIfWrongState([NotNull] this BattleGame game, [NotNull] string commandName, GameState expected)

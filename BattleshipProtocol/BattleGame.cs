@@ -41,6 +41,11 @@ namespace BattleshipProtocol
         /// </summary>
         public GameState GameState { get; set; }
 
+        /// <summary>
+        /// Gets or sets whether it's the local players turn. If not, it's the remote players turn.
+        /// </summary>
+        public bool IsLocalsTurn { get; set; }
+
         public PacketConnection PacketConnection { get; }
 
         private BattleGame(TcpClient client, PacketConnection packetConnection, Board localBoard, string playerName, bool isHost)

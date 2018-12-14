@@ -63,6 +63,7 @@
     <Compile Include="Protocol\Exceptions\ProtocolBoundedCommandException.cs" />
     <Compile Include="Protocol\Exceptions\ProtocolTooManyErrorsException.cs" />
     <Compile Include="Protocol\Internal\Extensions\BattleGameExtensions.cs" />
+    <Compile Include="Protocol\Internal\Extensions\RandomExtensions.cs" />
     <Compile Include="Protocol\Internal\ForwardErrorsObserver.cs" />
     <Compile Include="Protocol\PacketConnection.cs" />
     <Compile Include="Protocol\Internal\StreamConnection.cs" />

@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 using BattleshipProtocol.Protocol;
 using BattleshipProtocol.Protocol.Internal.Extensions;
 
@@ -15,7 +16,9 @@ namespace BattleshipProtocol.Game.Commands
             ResponseCode.StartClient,
             ResponseCode.StartHost
         };
+
         private readonly BattleGame _game;
+        private readonly Random _random = new Random();
 
         public StartCommand(BattleGame game)
         {
@@ -29,9 +32,12 @@ namespace BattleshipProtocol.Game.Commands
             _game.ThrowIfWrongState(Command, GameState.Idle);
 
             _game.GameState = GameState.InGame;
-            // TODO: Randomize player turn
-            // TODO: Send turn to remote
-            throw new System.NotImplementedException();
+            _game.IsLocalsTurn = _random.NextBool();
+
+            if (_game.IsLocalsTurn)
+                return context.SendResponseAsync(ResponseCode.StartHost, "Host starts");
+            else
+                return context.SendResponseAsync(ResponseCode.StartClient, "Client starts");
         }
 
         /// <inheritdoc />
@@ -41,8 +47,9 @@ namespace BattleshipProtocol.Game.Commands
             _game.ThrowIfWrongState(response.Code, GameState.Idle);
 
             _game.GameState = GameState.InGame;
-            // TODO: Set player turn
-            throw new System.NotImplementedException();
+            _game.IsLocalsTurn = response.Code == ResponseCode.StartClient;
+
+            return Task.CompletedTask;
         }
     }
 }
