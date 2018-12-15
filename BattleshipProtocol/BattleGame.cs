@@ -49,6 +49,29 @@ namespace BattleshipProtocol
 
         public PacketConnection PacketConnection { get; }
 
+        private BattleGame(TcpClient client, PacketConnection packetConnection, Board localBoard, string playerName, bool isHost)
+        {
+            IsHost = isHost;
+            RemotePlayer = new Player(false, client.Client.RemoteEndPoint);
+            LocalPlayer = new Player(true, client.Client.LocalEndPoint)
+                { Name = playerName, Board = localBoard };
+
+            _client = client;
+            PacketConnection = packetConnection;
+
+            packetConnection.RegisterCommand(new FireCommand(this));
+            packetConnection.RegisterCommand(new HelloCommand(this));
+            packetConnection.RegisterCommand(new HelpCommand());
+            packetConnection.RegisterCommand(new StartCommand(this));
+            packetConnection.RegisterCommand(new QuitCommand(this));
+
+            ForwardErrorsObserver.SubscribeTo(this);
+            PacketConnection.Subscribe(new DisconnectedObserver(this));
+
+            PacketConnection.BeginListening();
+            GameState = GameState.Handshake;
+        }
+
         /// <summary>
         /// Shoots at a given <paramref name="coordinate"/> parameter via the <see cref="FireCommand"/> command.
         /// The response will follow in a response packet and be handled automatically by <see cref="FireCommand"/>.
@@ -132,29 +155,6 @@ namespace BattleshipProtocol
                             Dispose();
                     });
             }
-        }
-
-        private BattleGame(TcpClient client, PacketConnection packetConnection, Board localBoard, string playerName, bool isHost)
-        {
-            IsHost = isHost;
-            RemotePlayer = new Player(false, client.Client.RemoteEndPoint);
-            LocalPlayer = new Player(true, client.Client.LocalEndPoint)
-                {Name = playerName, Board = localBoard};
-
-            _client = client;
-            PacketConnection = packetConnection;
-
-            packetConnection.RegisterCommand(new FireCommand(this));
-            packetConnection.RegisterCommand(new HelloCommand(this));
-            packetConnection.RegisterCommand(new HelpCommand());
-            packetConnection.RegisterCommand(new StartCommand(this));
-            packetConnection.RegisterCommand(new QuitCommand(this));
-
-            ForwardErrorsObserver.SubscribeTo(this);
-            PacketConnection.Subscribe(new DisconnectedObserver(this));
-
-            PacketConnection.BeginListening();
-            GameState = GameState.Handshake;
         }
 
         /// <summary>
