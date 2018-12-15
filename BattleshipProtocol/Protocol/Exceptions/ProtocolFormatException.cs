@@ -2,7 +2,7 @@
 {
     public class ProtocolFormatException : ProtocolException
     {
-        public string PacketSource { get; set; }
+        public string PacketSource { get; }
 
         public ProtocolFormatException(string packetSource)
             : base(ResponseCode.SyntaxError, $"Syntax error: Unable to parse packet.")

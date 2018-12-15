@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using BattleshipProtocol.Protocol.Exceptions;
 using BattleshipProtocol.Protocol.Internal;
@@ -23,8 +24,15 @@ namespace BattleshipProtocol.Protocol
 
         private readonly HashSet<IObserver<IPacket>> _packetObservers = new HashSet<IObserver<IPacket>>();
 
+        private int _consecutiveErrorCount;
+
         [NotNull, ItemNotNull]
         public IReadOnlyCollection<ICommandTemplate> RegisteredCommands => _registeredCommands;
+
+        /// <summary>
+        /// Gets or sets the consecutive error limit. Default is 3.
+        /// </summary>
+        public int ConsecutiveErrorLimit { get; set; } = 3;
 
         /// <inheritdoc/>
         /// <summary>
@@ -115,26 +123,44 @@ namespace BattleshipProtocol.Protocol
                 if (TryParseResponse(in packet, out Response response))
                 {
                     OnResponseReceived(in response);
+
+                    // Execute commands
+                    await Task.WhenAll(_registeredCommands.ToList()
+                        .Where(t => t.RoutedResponseCodes.Contains(response.Code))
+                        .Select(t => t.OnResponseAsync(this, response)));
+
+                    _consecutiveErrorCount = 0;
                     return;
                 }
 
                 if (TryParseCommand(in packet, out ReceivedCommand command))
                 {
                     OnCommandReceived(in command);
+
+                    // Execute command
+                    await command.CommandTemplate.OnCommandAsync(this, command.Argument);
+
+                    _consecutiveErrorCount = 0;
                     return;
                 }
 
                 // "WHAT YOU MEAN??"
                 throw new ProtocolFormatException(packet);
             }
-            catch (ProtocolException error)
+            catch (Exception error)
             {
-                await SendErrorAsync(error);
-                OnPacketError(error);
+                Interlocked.Increment(ref _consecutiveErrorCount);
+                OnPacketError(in error);
             }
-            catch (Exception unexpected)
+            finally
             {
-                OnPacketError(in unexpected);
+                if (_consecutiveErrorCount >= ConsecutiveErrorLimit)
+                {
+                    var tooManyError = new ProtocolTooManyErrorsException(_consecutiveErrorCount);
+                    OnPacketError(tooManyError);
+
+                    Dispose();
+                }
             }
         }
 
@@ -279,8 +305,6 @@ namespace BattleshipProtocol.Protocol
 
         protected virtual void OnCommandReceived(in ReceivedCommand packet)
         {
-            packet.CommandTemplate.OnCommand(this, packet.Argument);
-
             foreach (IObserver<IPacket> observer in _packetObservers.ToList())
             {
                 observer.OnNext(packet);
@@ -289,12 +313,6 @@ namespace BattleshipProtocol.Protocol
 
         protected virtual void OnResponseReceived(in Response packet)
         {
-            foreach (ICommandTemplate command in _registeredCommands.ToList())
-            {
-                if (command.RoutedResponseCodes.Contains(packet.Code))
-                    command.OnResponse(this, in packet);
-            }
-
             foreach (IObserver<IPacket> observer in _packetObservers.ToList())
             {
                 observer.OnNext(packet);
@@ -319,7 +337,7 @@ namespace BattleshipProtocol.Protocol
             if (!_packetObservers.Contains(observer))
                 _packetObservers.Add(observer);
 
-            return new ObserverUnsubscriber<IPacket>(_packetObservers, observer);
+            return new UnsubscribingObserver<IPacket>(_packetObservers, observer);
         }
     }
 }

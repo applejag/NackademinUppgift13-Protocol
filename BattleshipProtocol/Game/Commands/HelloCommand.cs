@@ -1,4 +1,7 @@
-﻿using BattleshipProtocol.Protocol;
+﻿using System.Threading.Tasks;
+using BattleshipProtocol.Protocol;
+using BattleshipProtocol.Protocol.Exceptions;
+using BattleshipProtocol.Protocol.Internal.Extensions;
 
 namespace BattleshipProtocol.Game.Commands
 {
@@ -13,18 +16,47 @@ namespace BattleshipProtocol.Game.Commands
             ResponseCode.Handshake
         };
 
-        /// <inheritdoc />
-        public void OnCommand(in PacketConnection context, in string argument)
+        private readonly BattleGame _game;
+
+        public HelloCommand(BattleGame game)
         {
-            // TODO: Save name (from message) into opponent game object and send a 220 response with our name
-            throw new System.NotImplementedException();
+            _game = game;
         }
 
         /// <inheritdoc />
-        public void OnResponse(in PacketConnection context, in Response response)
+        public async Task OnCommandAsync(PacketConnection context, string argument)
         {
-            // TODO: Save name (from response) into opponent game object
-            throw new System.NotImplementedException();
+            _game.ThrowIfNotHost(Command);
+            _game.ThrowIfWrongState(Command, GameState.Handshake);
+
+            SetNameFromArgument(argument);
+
+            await context.SendResponseAsync(ResponseCode.Handshake, _game.LocalPlayer.Name);
+            _game.GameState = GameState.Idle;
+        }
+
+        /// <inheritdoc />
+        public Task OnResponseAsync(PacketConnection context, Response response)
+        {
+            _game.ThrowIfHost(response.Code);
+            _game.ThrowIfWrongState(response.Code, GameState.Handshake);
+
+            SetNameFromArgument(response.Message);
+            _game.GameState = GameState.Idle;
+            return Task.CompletedTask;
+        }
+
+        private void SetNameFromArgument(string argument)
+        {
+            if (_game.RemotePlayer.Name != null)
+                throw new ProtocolException(ResponseCode.SequenceError, "Name already set.");
+
+            argument = argument?.Trim();
+
+            if (string.IsNullOrEmpty(argument))
+                throw new ProtocolException(ResponseCode.SyntaxError, "Missing name from response.");
+
+            _game.RemotePlayer.Name = argument;
         }
     }
 }

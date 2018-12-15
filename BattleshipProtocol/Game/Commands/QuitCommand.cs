@@ -1,5 +1,8 @@
 ﻿using System;
+using System.Threading.Tasks;
 using BattleshipProtocol.Protocol;
+using BattleshipProtocol.Protocol.Exceptions;
+using BattleshipProtocol.Protocol.Internal.Extensions;
 
 namespace BattleshipProtocol.Game.Commands
 {
@@ -14,19 +17,29 @@ namespace BattleshipProtocol.Game.Commands
             ResponseCode.ConnectionClosed
         };
 
-        /// <inheritdoc />
-        public void OnCommand(in PacketConnection context, in string argument)
+        private readonly BattleGame _game;
+
+        public QuitCommand(BattleGame game)
         {
-            // TODO: Close connection
-            // TODO: Send 270
-            throw new System.NotImplementedException();
+            _game = game;
         }
 
         /// <inheritdoc />
-        public void OnResponse(in PacketConnection context, in Response response)
+        public Task OnCommandAsync(PacketConnection context, string argument)
         {
-            // TODO: Is 270? Then close connection
-            throw new NotSupportedException();
+            _game.ThrowIfNotHost(Command);
+
+            return _game.Disconnect();
+        }
+
+        /// <inheritdoc />
+        public Task OnResponseAsync(PacketConnection context, Response response)
+        {
+            _game.ThrowIfHost(response.Code);
+
+            _game.GameState = GameState.Disconnected;
+            context.Dispose();
+            return Task.CompletedTask;
         }
     }
 }

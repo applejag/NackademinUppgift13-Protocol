@@ -11,6 +11,15 @@ namespace BattleshipProtocol.Protocol
         [CanBeNull]
         public string Message { get; set; }
 
+        public Response(ResponseCode code, string message)
+        {
+            Code = code;
+            Message = message;
+            Source = string.IsNullOrEmpty(message)
+                ? $"{(short)code}"
+                : $"{(short)code} {message}";
+        }
+
         public override string ToString()
         {
             return string.IsNullOrEmpty(Message)

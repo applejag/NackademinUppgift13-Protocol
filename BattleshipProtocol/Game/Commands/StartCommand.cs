@@ -1,4 +1,7 @@
-﻿using BattleshipProtocol.Protocol;
+﻿using System;
+using System.Threading.Tasks;
+using BattleshipProtocol.Protocol;
+using BattleshipProtocol.Protocol.Internal.Extensions;
 
 namespace BattleshipProtocol.Game.Commands
 {
@@ -14,20 +17,39 @@ namespace BattleshipProtocol.Game.Commands
             ResponseCode.StartHost
         };
 
-        /// <inheritdoc />
-        public void OnCommand(in PacketConnection context, in string argument)
+        private readonly BattleGame _game;
+        private readonly Random _random = new Random();
+
+        public StartCommand(BattleGame game)
         {
-            // TODO: Validate game state
-            // TODO: Switch to game-phase
-            throw new System.NotImplementedException();
+            _game = game;
         }
 
         /// <inheritdoc />
-        public void OnResponse(in PacketConnection context, in Response response)
+        public Task OnCommandAsync(PacketConnection context, string argument)
         {
-            // TODO: Validate game state
-            // TODO: Switch to game-phase
-            throw new System.NotImplementedException();
+            _game.ThrowIfNotHost(Command);
+            _game.ThrowIfWrongState(Command, GameState.Idle);
+
+            _game.GameState = GameState.InGame;
+            _game.IsLocalsTurn = _random.NextBool();
+
+            if (_game.IsLocalsTurn)
+                return context.SendResponseAsync(ResponseCode.StartHost, "Host starts");
+            else
+                return context.SendResponseAsync(ResponseCode.StartClient, "Client starts");
+        }
+
+        /// <inheritdoc />
+        public Task OnResponseAsync(PacketConnection context, Response response)
+        {
+            _game.ThrowIfHost(response.Code);
+            _game.ThrowIfWrongState(response.Code, GameState.Idle);
+
+            _game.GameState = GameState.InGame;
+            _game.IsLocalsTurn = response.Code == ResponseCode.StartClient;
+
+            return Task.CompletedTask;
         }
     }
 }
