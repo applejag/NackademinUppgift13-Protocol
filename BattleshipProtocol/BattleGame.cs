@@ -19,6 +19,8 @@ namespace BattleshipProtocol
 
         private readonly TcpClient _client;
         private CancellationTokenSource _disconnectTokenSource;
+        private GameState _gameState;
+        private bool _isLocalsTurn;
 
         /// <summary>
         /// Gets whether this application is the server.
@@ -40,12 +42,40 @@ namespace BattleshipProtocol
         /// <summary>
         /// Gets or sets the state of the connection and game.
         /// </summary>
-        public GameState GameState { get; set; }
+        public GameState GameState
+        {
+            get => _gameState;
+            set
+            {
+                if (_gameState == value) return;
+                _gameState = value;
+                OnGameStateChanged();
+            }
+        }
+
+        /// <summary>
+        /// Called when the <see cref="GameState"/> property changes.
+        /// </summary>
+        public event EventHandler GameStateChanged;
 
         /// <summary>
         /// Gets or sets whether it's the local players turn. If not, it's the remote players turn.
         /// </summary>
-        public bool IsLocalsTurn { get; set; }
+        public bool IsLocalsTurn
+        {
+            get => _isLocalsTurn;
+            set
+            {
+                if (_isLocalsTurn == value) return;
+                _isLocalsTurn = value;
+                OnLocalsTurnChanged();
+            }
+        }
+
+        /// <summary>
+        /// Called when the <see cref="IsLocalsTurn"/> property is changed.
+        /// </summary>
+        public event EventHandler LocalsTurnChanged; 
 
         public PacketConnection PacketConnection { get; }
 
@@ -283,6 +313,16 @@ namespace BattleshipProtocol
                 _game.GameState = GameState.Disconnected;
                 _game._disconnectTokenSource?.Cancel();
             }
+        }
+
+        protected virtual void OnGameStateChanged()
+        {
+            GameStateChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        protected virtual void OnLocalsTurnChanged()
+        {
+            LocalsTurnChanged?.Invoke(this, EventArgs.Empty);
         }
     }
 }
