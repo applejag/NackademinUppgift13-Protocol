@@ -1,0 +1,13 @@
+{
+    "name": "com.jillejr.battleshipprotocol",
+    "displayName": "Battleship networking protocol",
+    "version": "0.0.1",
+    "unity": "2018.1",
+    "description": "An implementation of a custom Battleship protocol over TCP/IP for multiplayer gaming.\n\nGithub: https://github.com/jilleJr/NackademinUppgift13-Protocol",
+    "keywords": [
+        "networking",
+        "multiplayer",
+        "battleship"
+    ],
+    "category": "Framework"
+}
