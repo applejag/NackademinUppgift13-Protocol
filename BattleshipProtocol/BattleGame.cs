@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using System.Net.Sockets;
+using System.Threading;
 using System.Threading.Tasks;
 using BattleshipProtocol.Game;
 using BattleshipProtocol.Game.Commands;
@@ -17,6 +18,7 @@ namespace BattleshipProtocol
         public const string ProtocolVersion = "BATTLESHIP/1.0";
 
         private readonly TcpClient _client;
+        private CancellationTokenSource _disconnectTokenSource;
 
         /// <summary>
         /// Gets whether this application is the server.
@@ -98,6 +100,30 @@ namespace BattleshipProtocol
             await PacketConnection.SendCommandAsync<StartCommand>();
         }
 
+        public async Task Disconnect(int timeout = 10_000)
+        {
+            if (!PacketConnection.IsConnected)
+                throw new ObjectDisposedException(nameof(PacketConnection), "Stream is already closed.");
+
+            if (IsHost)
+            {
+                await PacketConnection.SendResponseAsync(ResponseCode.ConnectionClosed, "Connection closed");
+                Dispose();
+            }
+            else
+            {
+                _disconnectTokenSource = new CancellationTokenSource();
+                await PacketConnection.SendCommandAsync<QuitCommand>();
+
+                await Task.Delay(timeout, _disconnectTokenSource.Token)
+                    .ContinueWith(t =>
+                    {
+                        if (PacketConnection.IsConnected)
+                            Dispose();
+                    });
+            }
+        }
+
         private BattleGame(TcpClient client, PacketConnection packetConnection, Board localBoard, string playerName, bool isHost)
         {
             IsHost = isHost;
@@ -115,7 +141,7 @@ namespace BattleshipProtocol
             packetConnection.RegisterCommand(new QuitCommand(this));
 
             ForwardErrorsObserver.SubscribeTo(this);
-            PacketConnection.Subscribe(new PacketObserver(this));
+            PacketConnection.Subscribe(new DisconnectedObserver(this));
 
             PacketConnection.BeginListening();
             GameState = GameState.Handshake;
@@ -225,11 +251,11 @@ namespace BattleshipProtocol
             _client.Dispose();
         }
 
-        private class PacketObserver : IObserver<IPacket>
+        private class DisconnectedObserver : IObserver<IPacket>
         {
             private readonly BattleGame _game;
 
-            public PacketObserver(BattleGame game)
+            public DisconnectedObserver(BattleGame game)
             {
                 _game = game;
             }
@@ -245,6 +271,7 @@ namespace BattleshipProtocol
             public void OnCompleted()
             {
                 _game.GameState = GameState.Disconnected;
+                _game._disconnectTokenSource.Cancel();
             }
         }
     }

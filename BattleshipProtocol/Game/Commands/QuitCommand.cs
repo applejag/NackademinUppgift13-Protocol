@@ -25,12 +25,12 @@ namespace BattleshipProtocol.Game.Commands
         }
 
         /// <inheritdoc />
-        public async Task OnCommandAsync(PacketConnection context, string argument)
+        public Task OnCommandAsync(PacketConnection context, string argument)
         {
             _game.ThrowIfNotHost(Command);
 
-            await context.SendResponseAsync(ResponseCode.ConnectionClosed, "Connection closed");
-            context.Dispose();
+            _game.GameState = GameState.Disconnected;
+            return _game.Disconnect();
         }
 
         /// <inheritdoc />
@@ -38,6 +38,7 @@ namespace BattleshipProtocol.Game.Commands
         {
             _game.ThrowIfHost(response.Code);
 
+            _game.GameState = GameState.Disconnected;
             context.Dispose();
             return Task.CompletedTask;
         }
