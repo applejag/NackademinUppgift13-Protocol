@@ -100,10 +100,20 @@ namespace BattleshipProtocol
             await PacketConnection.SendCommandAsync<StartCommand>();
         }
 
+        /// <summary>
+        /// Disconnects from the remote by sending a disconnected command,
+        /// with a timeout if the remote doesn't respond with a disconnected response.
+        /// </summary>
+        /// <param name="timeout">Timeout in milliseconds.</param>
         public async Task Disconnect(int timeout = 10_000)
         {
+            if (GameState == GameState.Disconnected)
+                throw new ObjectDisposedException(nameof(PacketConnection), "Game is already disconnected.");
+
             if (!PacketConnection.IsConnected)
                 throw new ObjectDisposedException(nameof(PacketConnection), "Stream is already closed.");
+
+            GameState = GameState.Disconnected;
 
             if (IsHost)
             {
@@ -271,7 +281,7 @@ namespace BattleshipProtocol
             public void OnCompleted()
             {
                 _game.GameState = GameState.Disconnected;
-                _game._disconnectTokenSource.Cancel();
+                _game._disconnectTokenSource?.Cancel();
             }
         }
     }

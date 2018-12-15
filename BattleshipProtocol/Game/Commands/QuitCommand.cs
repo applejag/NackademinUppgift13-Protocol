@@ -29,7 +29,6 @@ namespace BattleshipProtocol.Game.Commands
         {
             _game.ThrowIfNotHost(Command);
 
-            _game.GameState = GameState.Disconnected;
             return _game.Disconnect();
         }
 
