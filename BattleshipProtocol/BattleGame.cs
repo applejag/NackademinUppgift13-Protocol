@@ -107,12 +107,13 @@ namespace BattleshipProtocol
         /// The response will follow in a response packet and be handled automatically by <see cref="FireCommand"/>.
         /// </summary>
         /// <param name="coordinate">The coordinate to shoot at.</param>
+        /// <param name="message">The optional message to append to the command.</param>
         /// <exception cref="InvalidOperationException">Not in <see cref="Protocol.GameState.InGame"/> state. Use <see cref="BattleGame.GameState"/>.</exception>
         /// <exception cref="InvalidOperationException">It's not your turn. Use <see cref="IsLocalsTurn"/>.</exception>
         /// <exception cref="InvalidOperationException">No FIRE command has been registered.</exception>
         /// <exception cref="InvalidOperationException">A FIRE command is already pending.</exception>
         /// <exception cref="ArgumentException">Coordinate has already been shot at.</exception>
-        public async Task ShootAtAsync(Coordinate coordinate)
+        public async Task ShootAtAsync(Coordinate coordinate, [CanBeNull] string message)
         {
             if (GameState != GameState.InGame)
                 throw new InvalidOperationException("You can only FIRE when in-game.");
@@ -129,7 +130,12 @@ namespace BattleshipProtocol
                 throw new InvalidOperationException("A FIRE command is already pending. Awaiting response...");
 
             fireCommand.WaitingForResponseAt = coordinate;
-            await PacketConnection.SendCommandAsync<FireCommand>(coordinate.ToString());
+
+            message = message?.Trim();
+            if (string.IsNullOrEmpty(message))
+                await PacketConnection.SendCommandAsync<FireCommand>(coordinate.ToString());
+            else
+                await PacketConnection.SendCommandAsync<FireCommand>($"{coordinate} {message}");
         }
 
         /// <summary>
