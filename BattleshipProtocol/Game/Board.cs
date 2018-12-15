@@ -11,14 +11,19 @@ namespace BattleshipProtocol.Game
     /// </summary>
     public class Board
     {
-        protected internal bool[,] _shots = new bool[10, 10];
+        private readonly bool[,] _shots = new bool[10, 10];
 
+        public event EventHandler<Coordinate> BoardShot;
+
+        /// <summary>
+        /// The collection of ships in this board. Is guaranteed to be only one of each <see cref="ShipType"/>.
+        /// </summary>
         [NotNull, ItemNotNull]
         public IReadOnlyCollection<Ship> Ships { get; }
 
         public Board()
         {
-            Ships = Array.ConvertAll((ShipType[]) Enum.GetValues(typeof(ShipType)), s => new Ship(s));
+            Ships = Array.ConvertAll((ShipType[])Enum.GetValues(typeof(ShipType)), s => new Ship(s));
         }
 
         /// <summary>
@@ -26,7 +31,7 @@ namespace BattleshipProtocol.Game
         /// </summary>
         /// <param name="type">The ship type.</param>
         [NotNull, Pure]
-        public Ship GetShip(ShipType type)
+        public Ship GetShip(in ShipType type)
         {
             foreach (Ship ship in Ships)
             {
@@ -38,108 +43,96 @@ namespace BattleshipProtocol.Game
         }
 
         /// <summary>
-        /// Shoot at a grid location.
+        /// Register a shot and decrement the ships health. Returns the ship that was shot, if any.
         /// </summary>
-        /// <exception cref="ArgumentOutOfRangeException">If position from <paramref name="x"/> and <paramref name="y"/> is outside the grid.</exception>
-        /// <param name="x">X position to check. 0 is far west (A). 9 is far east (J).</param>
-        /// <param name="y">Y position to check. 0 is far north (1). 9 is far south (10).</param>
-        internal void ShootAtInternal(int x, int y)
+        /// <exception cref="ArgumentOutOfRangeException">If position from <paramref name="coordinate"/> is outside the grid.</exception>
+        /// <exception cref="InvalidOperationException">If board has already been shot at the given <paramref name="coordinate"/></exception>
+        /// <param name="coordinate">Position to check.</param>
+        /// <param name="hitShip">The ship that was hit, or null for miss.</param>
+        [CanBeNull]
+        internal Ship RegisterShot(in Coordinate coordinate, in ShipType? hitShip)
         {
-            if (x < 0 || x > 9)
-                throw new ArgumentOutOfRangeException(nameof(x), "Valid position ranges from 0-9.");
+            if (IsShotAt(in coordinate))
+                throw new InvalidOperationException($"Board has already been shot at {coordinate}");
 
-            if (y < 0 || y > 9)
-                throw new ArgumentOutOfRangeException(nameof(y), "Valid position ranges from 0-9.");
+            _shots[coordinate.X, coordinate.Y] = true;
+            OnBoardShot(in coordinate);
 
-            if (IsShotAt(x, y))
-                throw new InvalidOperationException("Board has already been shot at that location.");
+            Ship ship = hitShip.HasValue ? GetShip(hitShip.Value) : null;
 
-            // TODO: Logic for sending shot command
+            if (ship is null)
+                return null;
+
+            if (ship.Health == 0)
+            {
+                throw new InvalidOperationException($"Ship has already been sunk.");
+            }
+
+            ship.Health--;
+            return ship;
+        }
+
+        /// <summary>
+        /// Shoot at a grid location. Returns the ship that was shot, if any.
+        /// </summary>
+        /// <exception cref="ArgumentOutOfRangeException">If position from <paramref name="coordinate"/> is outside the grid.</exception>
+        /// <exception cref="InvalidOperationException">If board has already been shot at the given <paramref name="coordinate"/></exception>
+        /// <param name="coordinate">Position to check.</param>
+        [CanBeNull]
+        internal Ship ShootAtInternal(in Coordinate coordinate)
+        {
+            Ship ship = GetShipAt(in coordinate);
+            RegisterShot(coordinate, ship?.Type);
+
+            return ship;
         }
 
         /// <summary>
         /// Get the ship at position.
         /// </summary>
-        /// <param name="x">X position to check. 0 is far west (A). 9 is far east (J).</param>
-        /// <param name="y">Y position to check. 0 is far north (1). 9 is far south (10).</param>
+        /// <param name="coordinate">Position to check.</param>
         [CanBeNull, Pure]
-        public Ship GetShipAt(int x, int y)
+        public Ship GetShipAt(in Coordinate coordinate)
         {
-            if (x < 0 || x > 9)
-                throw new ArgumentOutOfRangeException(nameof(x), "Valid position ranges from 0-9.");
+            foreach (Ship ship in Ships)
+            {
+                if (ship.IsOnShip(in coordinate))
+                    return ship;
+            }
 
-            if (y < 0 || y > 9)
-                throw new ArgumentOutOfRangeException(nameof(y), "Valid position ranges from 0-9.");
-
-            return Ships.FirstOrDefault(ship => ship.IsOnShip(x, y));
-        }
-
-        /// <summary>
-        /// Get the ship that is shot at position. Returns null if square is not hit at that position.
-        /// </summary>
-        /// <param name="x">X position to check. 0 is far west (A). 9 is far east (J).</param>
-        /// <param name="y">Y position to check. 0 is far north (1). 9 is far south (10).</param>
-        [CanBeNull, Pure]
-        public Ship GetShipShotAt(int x, int y)
-        {
-            if (x < 0 || x > 9)
-                throw new ArgumentOutOfRangeException(nameof(x), "Valid position ranges from 0-9.");
-
-            if (y < 0 || y > 9)
-                throw new ArgumentOutOfRangeException(nameof(y), "Valid position ranges from 0-9.");
-
-            return IsShotAt(x, y) ? GetShipAt(x, y) : null;
+            return null;
         }
 
         /// <summary>
         /// Has this position been shot at?
         /// </summary>
-        /// <param name="x">X position to check. 0 is far west (A). 9 is far east (J).</param>
-        /// <param name="y">Y position to check. 0 is far north (1). 9 is far south (10).</param>
+        /// <param name="coordinate">Position to check.</param>
         [Pure]
-        public bool IsShotAt(int x, int y)
+        public bool IsShotAt(in Coordinate coordinate)
         {
-            if (x < 0 || x > 9)
-                throw new ArgumentOutOfRangeException(nameof(x), "Valid position ranges from 0-9.");
-
-            if (y < 0 || y > 9)
-                throw new ArgumentOutOfRangeException(nameof(y), "Valid position ranges from 0-9.");
-
-            return _shots[x, y];
+            return _shots[coordinate.X, coordinate.Y];
         }
 
         /// <summary>
         /// Moves a ship to a new location on this grid. Throws error if placed outside grid or collides with other ship.
         /// </summary>
-        /// <exception cref="ArgumentOutOfRangeException">If <paramref name="x"/> is outside the map.</exception>
-        /// <exception cref="ArgumentOutOfRangeException">If <paramref name="x"/>+<see cref="Ship.Length"/> is outside the map and iff <paramref name="orientation"/> is <see cref="Game.Orientation.South">South</see>.</exception>
-        /// <exception cref="ArgumentOutOfRangeException">If <paramref name="y"/> is outside the map.</exception>
-        /// <exception cref="ArgumentOutOfRangeException">If <paramref name="y"/>+<see cref="Ship.Length"/> is outside the map and iff <paramref name="orientation"/> is <see cref="Game.Orientation.East">East</see>.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">If <paramref name="coordinate"/>+<see cref="Ship.LengthEast"/> is outside the map.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">If <paramref name="coordinate"/>+<see cref="Ship.LengthSouth"/> is outside the map.</exception>
         /// <exception cref="InvalidOperationException">If ship collides with other ship.</exception>
         /// <param name="shipType">The type of the ship to move.</param>
-        /// <param name="x">X position to check. 0 is far west (A). 9 is far east (J).</param>
-        /// <param name="y">Y position to check. 0 is far north (1). 9 is far south (10).</param>
+        /// <param name="coordinate">Position to check.</param>
         /// <param name="orientation">The orientation. Facing north or facing east.</param>
-        public void MoveShip(ShipType shipType, int x, int y, Orientation orientation)
+        public void MoveShip(ShipType shipType, in Coordinate coordinate, in Orientation orientation)
         {
-            Ship ship = GetShip(shipType);
+            Ship ship = GetShip(in shipType);
 
-            if (x < 0 || x > 9)
-                throw new ArgumentOutOfRangeException(nameof(x), "Valid position ranges from 0-9.");
+            foreach (Ship other in Ships)
+            {
+                if (other.WillCollide(in coordinate, in orientation, ship.Length))
+                    throw new InvalidOperationException("Cannot move ship to that location due to collision with other ship!");
+            }
 
-            if (y < 0 || y > 9)
-                throw new ArgumentOutOfRangeException(nameof(y), "Valid position ranges from 0-9.");
-
-            if (x > 10 - ship.LengthEast)
-                throw new ArgumentOutOfRangeException(nameof(x), "Ship is lapping outside the map on the east edge due to length and orientation.");
-
-            if (y > 10 - ship.LengthSouth)
-                throw new ArgumentOutOfRangeException(nameof(x), "Ship is lapping outside the map on the south edge due to length and orientation.");
-
-            if (Ships.Any(other => other.WillCollide(x, y, orientation, ship.Length)))
-                throw new InvalidOperationException("Cannot move ship to that location due to collision with other ship!");
-
-            ship.SetPositionInternal(x, y, orientation);
+            ship.SetPositionInternal(in coordinate, in orientation);
         }
 
         /// <summary>
@@ -152,6 +145,11 @@ namespace BattleshipProtocol.Game
         {
             return x >= 0 && x <= 9
                 && y >= 0 && y <= 9;
+        }
+
+        protected virtual void OnBoardShot(in Coordinate e)
+        {
+            BoardShot?.Invoke(this, e);
         }
     }
 }
