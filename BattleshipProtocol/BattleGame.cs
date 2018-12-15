@@ -287,11 +287,6 @@ namespace BattleshipProtocol
             }
         }
 
-        public static string HelloWorld()
-        {
-            return "Hello World!";
-        }
-
         public virtual void Dispose()
         {
             _client.Dispose();
