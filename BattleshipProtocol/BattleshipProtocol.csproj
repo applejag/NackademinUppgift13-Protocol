@@ -49,6 +49,7 @@
   <ItemGroup>
     <Compile Include="BattleGame.cs" />
     <Compile Include="Game\Board.cs" />
+    <Compile Include="Game\FireOutcome.cs" />
     <Compile Include="Game\Coordinate.cs" />
     <Compile Include="Game\Commands\HelloCommand.cs" />
     <Compile Include="Game\Orientation.cs" />

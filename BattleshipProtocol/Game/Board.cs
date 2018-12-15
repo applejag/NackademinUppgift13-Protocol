@@ -13,6 +13,8 @@ namespace BattleshipProtocol.Game
     {
         private readonly bool[,] _shots = new bool[10, 10];
 
+        public event EventHandler<Coordinate> BoardShot;
+
         /// <summary>
         /// The collection of ships in this board. Is guaranteed to be only one of each <see cref="ShipType"/>.
         /// </summary>
@@ -54,6 +56,7 @@ namespace BattleshipProtocol.Game
                 throw new InvalidOperationException($"Board has already been shot at {coordinate}");
 
             _shots[coordinate.X, coordinate.Y] = true;
+            OnBoardShot(in coordinate);
 
             Ship ship = hitShip.HasValue ? GetShip(hitShip.Value) : null;
 
@@ -142,6 +145,11 @@ namespace BattleshipProtocol.Game
         {
             return x >= 0 && x <= 9
                 && y >= 0 && y <= 9;
+        }
+
+        protected virtual void OnBoardShot(in Coordinate e)
+        {
+            BoardShot?.Invoke(this, e);
         }
     }
 }

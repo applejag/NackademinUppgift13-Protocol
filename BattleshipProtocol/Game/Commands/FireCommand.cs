@@ -40,6 +40,21 @@ namespace BattleshipProtocol.Game.Commands
 
         public Coordinate? WaitingForResponseAt { get; set; }
 
+        /// <summary>
+        /// Called when fired upon, including the outcome.
+        /// </summary>
+        public event EventHandler<FireOutcome> TakenFire;
+
+        /// <summary>
+        /// Called directly after <see cref="TakenFire"/> if the command included a taunting message.
+        /// </summary>
+        public event EventHandler<string> TakenFireMessage;
+
+        /// <summary>
+        /// Called when a response of a fire sent by the local player is received, including the outcome.
+        /// </summary>
+        public event EventHandler<FireOutcome> FireResponse;
+
         public FireCommand(BattleGame game)
         {
             _game = game;
@@ -53,10 +68,15 @@ namespace BattleshipProtocol.Game.Commands
             if (WaitingForResponseAt.HasValue)
                 throw new ProtocolException(ResponseCode.SequenceError, $"Sequence error: Awaiting FIRE response for {WaitingForResponseAt}");
 
-            Coordinate coordinate = GetCoordinate(argument);
+            (Coordinate coordinate, string message) = GetCoordinate(argument);
 
-            Task responseTask = FireAndSendResponse(context, coordinate);
+            Task responseTask = FireAndSendResponse(context, coordinate, out Ship ship);
             _game.IsLocalsTurn = true;
+
+            OnTakenFire(new FireOutcome(coordinate, ship));
+            if (!string.IsNullOrEmpty(message))
+                OnTakenFireMessage(message);
+
             return responseTask;
         }
 
@@ -69,18 +89,17 @@ namespace BattleshipProtocol.Game.Commands
             if (WaitingForResponseAt is null)
                 throw new ProtocolException(ResponseCode.SequenceError, $"Sequence error: Awaiting {Command} command.");
 
-            RegisterShot(WaitingForResponseAt.Value, response);
-
+            RegisterShot(WaitingForResponseAt.Value, in response);
 
             return Task.CompletedTask;
         }
 
-        private Task FireAndSendResponse(PacketConnection context, Coordinate coordinate)
+        private Task FireAndSendResponse(PacketConnection context, Coordinate coordinate, out Ship ship)
         {
             if (_game.LocalPlayer.Board.IsShotAt(in coordinate))
                 throw new ProtocolException(ResponseCode.SequenceError, $"Sequence error: {coordinate} has already been fired upon.");
 
-            Ship ship = _game.LocalPlayer.Board.ShootAtInternal(coordinate);
+            ship = _game.LocalPlayer.Board.ShootAtInternal(coordinate);
 
             if (ship is null)
                 return context.SendResponseAsync(ResponseCode.FireMiss, "Miss!");
@@ -98,7 +117,7 @@ namespace BattleshipProtocol.Game.Commands
             return context.SendResponseAsync(GetResponseCode(ship.Type, sunk: true), $"You sunk my {ship.Name}");
         }
 
-        private Coordinate GetCoordinate(string argument)
+        private (Coordinate coordinate, string message) GetCoordinate(string argument)
         {
             Match argMatch = _argRegex.Match(argument ?? string.Empty);
 
@@ -106,7 +125,7 @@ namespace BattleshipProtocol.Game.Commands
                 throw new ProtocolArgumentMissingException(Command);
 
             string coordinateStr = argMatch.Groups[1].Value;
-            string message = argMatch.Groups[2].Value;
+            string message = argMatch.Groups[2].Value.Trim();
 
             Coordinate coordinate;
             try
@@ -123,10 +142,10 @@ namespace BattleshipProtocol.Game.Commands
                 throw new ProtocolException(ResponseCode.SyntaxError, "Syntax error: Unable to parse coordinate.");
             }
 
-            return coordinate;
+            return (coordinate, message);
         }
 
-        private void RegisterShot(in Coordinate coordinate, Response response)
+        private void RegisterShot(in Coordinate coordinate, in Response response)
         {
             if (_game.RemotePlayer.Board.IsShotAt(in coordinate))
             {
@@ -159,6 +178,8 @@ namespace BattleshipProtocol.Game.Commands
 
                         WaitingForResponseAt = null;
                         _game.IsLocalsTurn = false;
+
+                        OnFireResponse(new FireOutcome(coordinate, lastShips[0]));
                         break;
                     }
                 case ResponseCode.FireMiss:
@@ -166,6 +187,8 @@ namespace BattleshipProtocol.Game.Commands
 
                     WaitingForResponseAt = null;
                     _game.IsLocalsTurn = false;
+
+                    OnFireResponse(new FireOutcome(coordinate, null));
                     break;
                 default:
                     {
@@ -174,6 +197,8 @@ namespace BattleshipProtocol.Game.Commands
 
                         WaitingForResponseAt = null;
                         _game.IsLocalsTurn = false;
+
+                        OnFireResponse(new FireOutcome(coordinate, ship));
 
                         if (_game.RemotePlayer.Board.Ships.All(s => s.Health == 0))
                         {
@@ -271,6 +296,21 @@ namespace BattleshipProtocol.Game.Commands
                 default:
                     throw new ArgumentOutOfRangeException(nameof(shipType), shipType, null);
             }
+        }
+
+        protected virtual void OnTakenFire(FireOutcome e)
+        {
+            TakenFire?.Invoke(this, e);
+        }
+
+        protected virtual void OnFireResponse(FireOutcome e)
+        {
+            FireResponse?.Invoke(this, e);
+        }
+
+        protected virtual void OnTakenFireMessage(string e)
+        {
+            TakenFireMessage?.Invoke(this, e);
         }
     }
 }

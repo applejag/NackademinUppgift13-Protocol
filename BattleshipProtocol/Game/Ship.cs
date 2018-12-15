@@ -6,6 +6,8 @@ namespace BattleshipProtocol.Game
 {
     public class Ship
     {
+        private int _health;
+
         /// <summary>
         /// Gets the ship name.
         /// </summary>
@@ -34,7 +36,21 @@ namespace BattleshipProtocol.Game
         /// <summary>
         /// Gets the remaining health of this ship.
         /// </summary>
-        public int Health { get; internal set; }
+        public int Health
+        {
+            get => _health;
+            internal set {
+                if (_health == value) return;
+                if (value < 0) throw new ArgumentOutOfRangeException(nameof(value), "Ships health cannot fall below 0.");
+                _health = value;
+                OnHealthChanged();
+            }
+        }
+
+        /// <summary>
+        /// Called when health is changed. When ship gets damaged.
+        /// </summary>
+        public event EventHandler ShipDamaged;
 
         /// <summary>
         /// Gets the orientation of the boat. Facing.
@@ -52,6 +68,11 @@ namespace BattleshipProtocol.Game
         /// Is set to -1 if unknown or unset location (for example, pre-placed and the opponents ships).
         /// </summary>
         public int Y { get; private set; } = -1;
+
+        /// <summary>
+        /// Called when ships position is changed. This includes <see cref="X"/>, <see cref="Y"/>, and <see cref="Orientation"/>.
+        /// </summary>
+        public event EventHandler ShipMoved;
 
         /// <summary>
         /// Gets whether this boat on the grid? I.e. has it been placed by the user. 
@@ -85,6 +106,7 @@ namespace BattleshipProtocol.Game
             X = coordinate.X;
             Y = coordinate.Y;
             Orientation = orientation;
+            OnShipMoved();
         }
 
         /// <summary>
@@ -194,6 +216,16 @@ namespace BattleshipProtocol.Game
                 default:
                     throw new ArgumentOutOfRangeException(nameof(shipType), shipType, null);
             }
+        }
+
+        protected virtual void OnHealthChanged()
+        {
+            ShipDamaged?.Invoke(this, EventArgs.Empty);
+        }
+
+        protected virtual void OnShipMoved()
+        {
+            ShipMoved?.Invoke(this, EventArgs.Empty);
         }
     }
 }
