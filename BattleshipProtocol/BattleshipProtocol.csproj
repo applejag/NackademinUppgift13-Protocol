@@ -57,6 +57,7 @@
     <Compile Include="Game\Ship.cs" />
     <Compile Include="Game\ShipType.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Protocol\ConnectionSettings.cs" />
     <Compile Include="Protocol\Exceptions\ProtocolArgumentMissingException.cs" />
     <Compile Include="Protocol\Exceptions\ProtocolPlayerTurnException.cs" />
     <Compile Include="Protocol\Exceptions\ProtocolInvalidStateResponseException.cs" />

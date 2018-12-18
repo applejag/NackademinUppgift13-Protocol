@@ -39,7 +39,7 @@ namespace BattleshipProtocol.Protocol
         /// Initializes the Battleship packets connection with <see cref="Encoding.UTF8"/> encoding.
         /// </summary>
         public PacketConnection([NotNull] in Stream stream)
-            : this(in stream, Encoding.UTF8)
+            : base(in stream, Encoding.UTF8, true)
         {
         }
 
@@ -47,8 +47,8 @@ namespace BattleshipProtocol.Protocol
         /// <summary>
         /// Initializes the Battleship packets connection with custom encoding.
         /// </summary>
-        public PacketConnection([NotNull] in Stream stream, [NotNull] in Encoding encoding)
-            : base(in stream, in encoding)
+        public PacketConnection([NotNull] in Stream stream, [NotNull] in Encoding encoding, in bool detectFromBom)
+            : base(in stream, in encoding, in detectFromBom)
         {
         }
 
@@ -165,34 +165,31 @@ namespace BattleshipProtocol.Protocol
         }
 
         [NotNull]
-        public Task<Response> ExpectResponseAsync(in int timeoutOverride)
+        public async Task<Response> ExpectResponseAsync(CancellationToken cancellationToken = default)
         {
-            int oldTimeout = ReadTimeout;
-            ReadTimeout = timeoutOverride;
+            cancellationToken.ThrowIfCancellationRequested();
 
-            try
+            using (cancellationToken.Register(Dispose))
             {
-                return ExpectResponseAsync();
+                string line;
+                try
+                {
+                    line = await ReadLineAsync();
+                }
+                catch (Exception e) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw new OperationCanceledException("Read operation was cancelled, and stream is now closed.", e);
+                }
+
+                if (line is null)
+                    throw new ProtocolUnexpectedDisconnect();
+
+                if (!TryParseResponse(line, out Response response))
+                    throw new ProtocolFormatException(line);
+
+                OnResponseReceived(response);
+                return response;
             }
-            finally
-            {
-                ReadTimeout = oldTimeout;
-            }
-        }
-
-        [NotNull]
-        public async Task<Response> ExpectResponseAsync()
-        {
-            string line = await ReadLineAsync();
-
-            if (line is null)
-                throw new ProtocolUnexpectedDisconnect();
-
-            if (!TryParseResponse(line, out Response response))
-                throw new ProtocolFormatException(line);
-
-            OnResponseReceived(response);
-            return response;
         }
 
         [NotNull]
