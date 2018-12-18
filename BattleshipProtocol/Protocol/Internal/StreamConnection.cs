@@ -37,7 +37,7 @@ namespace BattleshipProtocol.Protocol.Internal
         /// </summary>
         /// <param name="stream">The stream to use when reading and writing data.</param>
         public StreamConnection([NotNull] in Stream stream)
-            : this(stream, Encoding.UTF8)
+            : this(stream, Encoding.UTF8, true)
         {
         }
 
@@ -46,12 +46,13 @@ namespace BattleshipProtocol.Protocol.Internal
         /// </summary>
         /// <param name="stream">The stream to use when reading and writing data.</param>
         /// <param name="encoding">The encoding to use when reading and writing data.</param>
-        public StreamConnection([NotNull] in Stream stream, [NotNull] in Encoding encoding)
+        /// <param name="detectFromBom">Should try detect encoding from the byte order marks?</param>
+        public StreamConnection([NotNull] in Stream stream, [NotNull] in Encoding encoding, in bool detectFromBom)
         {
             _stream = stream;
 
             _reader = new StreamReader(stream, encoding,
-                detectEncodingFromByteOrderMarks: true, bufferSize: 1024, leaveOpen: true);
+                detectEncodingFromByteOrderMarks: detectFromBom, bufferSize: 1024, leaveOpen: true);
 
             _writer = new StreamWriter(stream, encoding,
                 bufferSize: 1024, leaveOpen: true);

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using System.Net.Sockets;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using BattleshipProtocol.Game;
@@ -193,6 +194,7 @@ namespace BattleshipProtocol
             }
         }
 
+
         /// <summary>
         /// <para>
         /// Connects to a host at a given address and completes the version handshake. Supports both IPv4 and IPv6, given it is enabled on the OS.
@@ -217,7 +219,39 @@ namespace BattleshipProtocol
         /// <exception cref="ArgumentNullException">The <paramref name="localPlayerName"/> parameter is null or whitespace.</exception>
         /// <exception cref="ArgumentException">The ships in the <paramref name="localBoard"/> parameter is not set up.</exception>
         [NotNull]
-        public static async Task<BattleGame> ConnectAsync([NotNull] string address, ushort port, 
+        public static Task<BattleGame> ConnectAsync([NotNull] string address, ushort port,
+            [NotNull] Board localBoard, [NotNull] string localPlayerName, int timeout = 10_000)
+        {
+            return ConnectAsync(new ConnectionSettings
+            {
+                Address = address,
+                Port = port,
+            }, localBoard, localPlayerName, timeout);
+        }
+
+        /// <summary>
+        /// <para>
+        /// Connects to a host at a given address and completes the version handshake. Supports both IPv4 and IPv6, given it is enabled on the OS.
+        /// </para>
+        /// <para>
+        /// On connection error, use <see cref="SocketException.ErrorCode"/> from the thrown error to obtain the cause of the error.
+        /// Refer to the <see href="https://docs.microsoft.com/en-us/windows/desktop/winsock/windows-sockets-error-codes-2">Windows Sockets version 2 API error code</see> documentation.
+        /// </para>
+        /// <para>
+        /// On packet error, use <see cref="ProtocolException.ErrorMessage"/> from the thrown error to obtain the cause of the error. 
+        /// </para>
+        /// </summary>
+        /// <param name="connectionSettings">The settings for the connection.</param>
+        /// <param name="localBoard">The board of the local player.</param>
+        /// <param name="localPlayerName">The name of the local player.</param>
+        /// <param name="timeout">Timeout on awaiting handshake, in milliseconds.</param>
+        /// <exception cref="SocketException">An error occurred when accessing the socket.</exception>
+        /// <exception cref="ProtocolException">Version handshake failed.</exception>
+        /// <exception cref="SocketException">An error occurred when accessing the socket.</exception>
+        /// <exception cref="ArgumentNullException">The <paramref name="localPlayerName"/> parameter is null or whitespace.</exception>
+        /// <exception cref="ArgumentException">The ships in the <paramref name="localBoard"/> parameter is not set up.</exception>
+        [NotNull]
+        public static async Task<BattleGame> ConnectAsync(ConnectionSettings connectionSettings, 
             [NotNull] Board localBoard, [NotNull] string localPlayerName, int timeout = 10_000)
         {
             if (string.IsNullOrWhiteSpace(localPlayerName))
@@ -228,8 +262,8 @@ namespace BattleshipProtocol
 
             var tcp = new TcpClient();
 
-            await tcp.ConnectAsync(address, port);
-            var connection = new PacketConnection(tcp.GetStream());
+            await tcp.ConnectAsync(connectionSettings.Address, connectionSettings.Port);
+            var connection = new PacketConnection(tcp.GetStream(), connectionSettings.Encoding, connectionSettings.DetectEncodingFromBOM);
 
             await connection.EnsureVersionGreeting(ProtocolVersion, timeout);
 
@@ -239,6 +273,7 @@ namespace BattleshipProtocol
 
             return game;
         }
+
 
         /// <summary>
         /// <para>
@@ -256,7 +291,32 @@ namespace BattleshipProtocol
         /// <exception cref="ArgumentNullException">The <paramref name="localPlayerName"/> parameter is null or whitespace.</exception>
         /// <exception cref="ArgumentException">The ships in the <paramref name="localBoard"/> parameter is not set up.</exception>
         [NotNull]
-        public static async Task<BattleGame> HostAndWaitAsync(ushort port,
+        public static Task<BattleGame> HostAndWaitAsync(ushort port,
+            [NotNull] Board localBoard, [NotNull] string localPlayerName)
+        {
+            return HostAndWaitAsync(new ConnectionSettings
+            {
+                Port = port,
+            }, localBoard, localPlayerName);
+        }
+
+        /// <summary>
+        /// <para>
+        /// Host on a given port. Will return once a client has connected.
+        /// </para>
+        /// <para>
+        /// On connection error, use <see cref="SocketException.ErrorCode"/> from the thrown error to obtain the cause of the error.
+        /// Refer to the <see href="https://docs.microsoft.com/en-us/windows/desktop/winsock/windows-sockets-error-codes-2">Windows Sockets version 2 API error code</see> documentation.
+        /// </para>
+        /// </summary>
+        /// <param name="connectionSettings">The settings for connecting. The <see cref="ConnectionSettings.Address"/> property is ignored.</param>
+        /// <param name="localBoard">The board of the local player.</param>
+        /// <param name="localPlayerName">The name of the local player.</param>
+        /// <exception cref="SocketException">An error occurred when accessing the socket.</exception>
+        /// <exception cref="ArgumentNullException">The <paramref name="localPlayerName"/> parameter is null or whitespace.</exception>
+        /// <exception cref="ArgumentException">The ships in the <paramref name="localBoard"/> parameter is not set up.</exception>
+        [NotNull]
+        public static async Task<BattleGame> HostAndWaitAsync(ConnectionSettings connectionSettings,
             [NotNull] Board localBoard, [NotNull] string localPlayerName)
         {
             if (string.IsNullOrWhiteSpace(localPlayerName))
@@ -265,13 +325,13 @@ namespace BattleshipProtocol
             if (!localBoard.Ships.All(s => s.IsOnBoard))
                 throw new ArgumentException("Local board is not set up!", nameof(localBoard));
 
-            TcpListener listener = TcpListener.Create(port);
+            TcpListener listener = TcpListener.Create(connectionSettings.Port);
             try
             {
                 listener.Start();
-
+                
                 TcpClient tcp = await listener.AcceptTcpClientAsync();
-                var connection = new PacketConnection(tcp.GetStream());
+                var connection = new PacketConnection(tcp.GetStream(), connectionSettings.Encoding, connectionSettings.DetectEncodingFromBOM);
 
                 await connection.SendResponseAsync(new Response
                 {

@@ -39,7 +39,7 @@ namespace BattleshipProtocol.Protocol
         /// Initializes the Battleship packets connection with <see cref="Encoding.UTF8"/> encoding.
         /// </summary>
         public PacketConnection([NotNull] in Stream stream)
-            : this(in stream, Encoding.UTF8)
+            : base(in stream, Encoding.UTF8, true)
         {
         }
 
@@ -47,8 +47,8 @@ namespace BattleshipProtocol.Protocol
         /// <summary>
         /// Initializes the Battleship packets connection with custom encoding.
         /// </summary>
-        public PacketConnection([NotNull] in Stream stream, [NotNull] in Encoding encoding)
-            : base(in stream, in encoding)
+        public PacketConnection([NotNull] in Stream stream, [NotNull] in Encoding encoding, in bool detectFromBom)
+            : base(in stream, in encoding, in detectFromBom)
         {
         }
 
