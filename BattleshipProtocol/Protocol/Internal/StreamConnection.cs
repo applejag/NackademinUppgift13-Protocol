@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -145,7 +146,7 @@ namespace BattleshipProtocol.Protocol.Internal
 
             if (IsListening)
                 throw new InvalidOperationException("Stream is already being read by " + nameof(BeginListening) + ".");
-
+            
             return await _reader.ReadLineAsync();
         }
 

@@ -43,11 +43,9 @@ namespace BattleshipProtocol
         /// <summary>
         /// Gets or sets the state of the connection and game.
         /// </summary>
-        public GameState GameState
-        {
+        public GameState GameState {
             get => _gameState;
-            set
-            {
+            set {
                 if (_gameState == value) return;
                 _gameState = value;
                 OnGameStateChanged();
@@ -62,11 +60,9 @@ namespace BattleshipProtocol
         /// <summary>
         /// Gets or sets whether it's the local players turn. If not, it's the remote players turn.
         /// </summary>
-        public bool IsLocalsTurn
-        {
+        public bool IsLocalsTurn {
             get => _isLocalsTurn;
-            set
-            {
+            set {
                 if (_isLocalsTurn == value) return;
                 _isLocalsTurn = value;
                 OnLocalsTurnChanged();
@@ -76,7 +72,7 @@ namespace BattleshipProtocol
         /// <summary>
         /// Called when the <see cref="IsLocalsTurn"/> property is changed.
         /// </summary>
-        public event EventHandler LocalsTurnChanged; 
+        public event EventHandler LocalsTurnChanged;
 
         public PacketConnection PacketConnection { get; }
 
@@ -85,7 +81,7 @@ namespace BattleshipProtocol
             IsHost = isHost;
             RemotePlayer = new Player(false, client.Client.RemoteEndPoint);
             LocalPlayer = new Player(true, client.Client.LocalEndPoint)
-                { Name = playerName, Board = localBoard };
+            { Name = playerName, Board = localBoard };
 
             _client = client;
             PacketConnection = packetConnection;
@@ -226,7 +222,7 @@ namespace BattleshipProtocol
             {
                 Address = address,
                 Port = port,
-            }, localBoard, localPlayerName, timeout);
+            }, localBoard, localPlayerName, new CancellationTokenSource(timeout).Token);
         }
 
         /// <summary>
@@ -244,36 +240,73 @@ namespace BattleshipProtocol
         /// <param name="connectionSettings">The settings for the connection.</param>
         /// <param name="localBoard">The board of the local player.</param>
         /// <param name="localPlayerName">The name of the local player.</param>
-        /// <param name="timeout">Timeout on awaiting handshake, in milliseconds.</param>
+        /// <param name="cancellationToken">Cancellation token to cancel this action.</param>
         /// <exception cref="SocketException">An error occurred when accessing the socket.</exception>
         /// <exception cref="ProtocolException">Version handshake failed.</exception>
         /// <exception cref="SocketException">An error occurred when accessing the socket.</exception>
         /// <exception cref="ArgumentNullException">The <paramref name="localPlayerName"/> parameter is null or whitespace.</exception>
         /// <exception cref="ArgumentException">The ships in the <paramref name="localBoard"/> parameter is not set up.</exception>
         [NotNull]
-        public static async Task<BattleGame> ConnectAsync(ConnectionSettings connectionSettings, 
-            [NotNull] Board localBoard, [NotNull] string localPlayerName, int timeout = 10_000)
+        public static async Task<BattleGame> ConnectAsync(ConnectionSettings connectionSettings,
+            [NotNull] Board localBoard, [NotNull] string localPlayerName, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(localPlayerName))
                 throw new ArgumentNullException(nameof(localPlayerName), "Name of local player must be set.");
 
             if (!localBoard.Ships.All(s => s.IsOnBoard))
                 throw new ArgumentException("Local board is not set up!", nameof(localBoard));
+            
+            cancellationToken.ThrowIfCancellationRequested();
 
-            var tcp = new TcpClient();
+            TcpClient tcp = null;
+            try
+            {
+                tcp = new TcpClient();
 
-            await tcp.ConnectAsync(connectionSettings.Address, connectionSettings.Port);
-            var connection = new PacketConnection(tcp.GetStream(), connectionSettings.Encoding, connectionSettings.DetectEncodingFromBOM);
+                await tcp.ConnectAsync(connectionSettings.Address, connectionSettings.Port);
+                var connection = new PacketConnection(tcp.GetStream(), connectionSettings.Encoding,
+                    connectionSettings.DetectEncodingFromBOM);
 
-            await connection.EnsureVersionGreeting(ProtocolVersion, timeout);
+                await connection.EnsureVersionGreeting(ProtocolVersion, cancellationToken);
 
-            var game = new BattleGame(tcp, connection, localBoard, localPlayerName, isHost: false);
+                var game = new BattleGame(tcp, connection, localBoard, localPlayerName, isHost: false);
 
-            await game.PacketConnection.SendCommandAsync<HelloCommand>(localPlayerName);
+                await game.PacketConnection.SendCommandAsync<HelloCommand>(localPlayerName);
 
-            return game;
+                return game;
+            }
+            catch
+            {
+                tcp?.Dispose();
+                throw;
+            }
         }
 
+        /// <summary>
+        /// <para>
+        /// Host on a given port. Will return once a client has connected.
+        /// </para>
+        /// <para>
+        /// On connection error, use <see cref="SocketException.ErrorCode"/> from the thrown error to obtain the cause of the error.
+        /// Refer to the <see href="https://docs.microsoft.com/en-us/windows/desktop/winsock/windows-sockets-error-codes-2">Windows Sockets version 2 API error code</see> documentation.
+        /// </para>
+        /// </summary>
+        /// <param name="port">Host port.</param>
+        /// <param name="localBoard">The board of the local player.</param>
+        /// <param name="localPlayerName">The name of the local player.</param>
+        /// <param name="cancellationToken">Cancellation token to cancel this action.</param>
+        /// <exception cref="SocketException">An error occurred when accessing the socket.</exception>
+        /// <exception cref="ArgumentNullException">The <paramref name="localPlayerName"/> parameter is null or whitespace.</exception>
+        /// <exception cref="ArgumentException">The ships in the <paramref name="localBoard"/> parameter is not set up.</exception>
+        [NotNull]
+        public static Task<BattleGame> HostAndWaitAsync(ushort port,
+            [NotNull] Board localBoard, [NotNull] string localPlayerName, CancellationToken cancellationToken)
+        {
+            return HostAndWaitAsync(new ConnectionSettings
+            {
+                Port = port,
+            }, localBoard, localPlayerName, cancellationToken);
+        }
 
         /// <summary>
         /// <para>
@@ -312,12 +345,13 @@ namespace BattleshipProtocol
         /// <param name="connectionSettings">The settings for connecting. The <see cref="ConnectionSettings.Address"/> property is ignored.</param>
         /// <param name="localBoard">The board of the local player.</param>
         /// <param name="localPlayerName">The name of the local player.</param>
+        /// <param name="cancellationToken">Cancellation token to cancel this action.</param>
         /// <exception cref="SocketException">An error occurred when accessing the socket.</exception>
         /// <exception cref="ArgumentNullException">The <paramref name="localPlayerName"/> parameter is null or whitespace.</exception>
         /// <exception cref="ArgumentException">The ships in the <paramref name="localBoard"/> parameter is not set up.</exception>
         [NotNull]
         public static async Task<BattleGame> HostAndWaitAsync(ConnectionSettings connectionSettings,
-            [NotNull] Board localBoard, [NotNull] string localPlayerName)
+            [NotNull] Board localBoard, [NotNull] string localPlayerName, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(localPlayerName))
                 throw new ArgumentNullException(nameof(localPlayerName), "Name of local player must be set.");
@@ -325,21 +359,30 @@ namespace BattleshipProtocol
             if (!localBoard.Ships.All(s => s.IsOnBoard))
                 throw new ArgumentException("Local board is not set up!", nameof(localBoard));
 
+            cancellationToken.ThrowIfCancellationRequested();
+
             TcpListener listener = TcpListener.Create(connectionSettings.Port);
             try
             {
                 listener.Start();
-                
-                TcpClient tcp = await listener.AcceptTcpClientAsync();
-                var connection = new PacketConnection(tcp.GetStream(), connectionSettings.Encoding, connectionSettings.DetectEncodingFromBOM);
-
-                await connection.SendResponseAsync(new Response
+                using (cancellationToken.Register(() => listener.Stop()))
                 {
-                    Code = ResponseCode.VersionGreeting,
-                    Message = ProtocolVersion
-                });
+                    TcpClient tcp = await Task.Run(() => listener.AcceptTcpClientAsync(), cancellationToken);
+                    var connection = new PacketConnection(tcp.GetStream(), connectionSettings.Encoding,
+                        connectionSettings.DetectEncodingFromBOM);
 
-                return new BattleGame(tcp, connection, localBoard, localPlayerName, true);
+                    await connection.SendResponseAsync(new Response
+                    {
+                        Code = ResponseCode.VersionGreeting,
+                        Message = ProtocolVersion
+                    });
+
+                    return new BattleGame(tcp, connection, localBoard, localPlayerName, true);
+                }
+            }
+            catch (Exception e) when (cancellationToken.IsCancellationRequested)
+            {
+                throw new OperationCanceledException("Listening for TCP/IP connection was cancelled.", e);
             }
             finally
             {

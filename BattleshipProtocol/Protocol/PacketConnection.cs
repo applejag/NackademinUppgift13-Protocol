@@ -165,34 +165,31 @@ namespace BattleshipProtocol.Protocol
         }
 
         [NotNull]
-        public Task<Response> ExpectResponseAsync(in int timeoutOverride)
+        public async Task<Response> ExpectResponseAsync(CancellationToken cancellationToken = default)
         {
-            int oldTimeout = ReadTimeout;
-            ReadTimeout = timeoutOverride;
+            cancellationToken.ThrowIfCancellationRequested();
 
-            try
+            using (cancellationToken.Register(Dispose))
             {
-                return ExpectResponseAsync();
+                string line;
+                try
+                {
+                    line = await ReadLineAsync();
+                }
+                catch (Exception e) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw new OperationCanceledException("Read operation was cancelled, and stream is now closed.", e);
+                }
+
+                if (line is null)
+                    throw new ProtocolUnexpectedDisconnect();
+
+                if (!TryParseResponse(line, out Response response))
+                    throw new ProtocolFormatException(line);
+
+                OnResponseReceived(response);
+                return response;
             }
-            finally
-            {
-                ReadTimeout = oldTimeout;
-            }
-        }
-
-        [NotNull]
-        public async Task<Response> ExpectResponseAsync()
-        {
-            string line = await ReadLineAsync();
-
-            if (line is null)
-                throw new ProtocolUnexpectedDisconnect();
-
-            if (!TryParseResponse(line, out Response response))
-                throw new ProtocolFormatException(line);
-
-            OnResponseReceived(response);
-            return response;
         }
 
         [NotNull]

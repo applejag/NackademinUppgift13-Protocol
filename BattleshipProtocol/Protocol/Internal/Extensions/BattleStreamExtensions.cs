@@ -9,9 +9,9 @@ namespace BattleshipProtocol.Protocol.Internal.Extensions
     internal static class BattleStreamExtensions
     {
         [NotNull]
-        public static async Task EnsureVersionGreeting(this PacketConnection stream, string version, int timeout = Timeout.Infinite)
+        public static async Task EnsureVersionGreeting(this PacketConnection stream, string version, CancellationToken cancellationToken)
         {
-            Response response = await EnsureResponse(stream, ResponseCode.VersionGreeting, timeout);
+            Response response = await EnsureResponse(stream, ResponseCode.VersionGreeting, cancellationToken);
 
             if (string.IsNullOrWhiteSpace(response.Message))
             {
@@ -27,13 +27,13 @@ namespace BattleshipProtocol.Protocol.Internal.Extensions
         }
 
         [NotNull]
-        public static async Task<Response> EnsureResponse(this PacketConnection stream, ResponseCode code, int timeout = Timeout.Infinite)
+        public static async Task<Response> EnsureResponse(this PacketConnection stream, ResponseCode code, CancellationToken cancellationToken)
         {
             Response response;
 
             try
             {
-                response = await stream.ExpectResponseAsync(timeout);
+                response = await stream.ExpectResponseAsync(cancellationToken);
             }
             catch (ProtocolException error)
             {
