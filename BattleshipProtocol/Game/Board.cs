@@ -12,6 +12,7 @@ namespace BattleshipProtocol.Game
     public class Board
     {
         private readonly bool[,] _shots = new bool[10, 10];
+        private readonly Ship[,] _shipsHit = new Ship[10, 10];
 
         public event EventHandler<Coordinate> BoardShot;
 
@@ -55,10 +56,12 @@ namespace BattleshipProtocol.Game
             if (IsShotAt(in coordinate))
                 throw new InvalidOperationException($"Board has already been shot at {coordinate}");
 
-            _shots[coordinate.X, coordinate.Y] = true;
-            OnBoardShot(in coordinate);
 
             Ship ship = hitShip.HasValue ? GetShip(hitShip.Value) : null;
+            _shots[coordinate.X, coordinate.Y] = true;
+            _shipsHit[coordinate.X, coordinate.Y] = ship;
+
+            OnBoardShot(in coordinate);
 
             if (ship is null)
                 return null;
@@ -89,11 +92,15 @@ namespace BattleshipProtocol.Game
 
         /// <summary>
         /// Get the ship at position.
+        /// If a ship of unknown location (ex: remote board) was hit at <paramref name="coordinate"/> then this returns that ship.
         /// </summary>
         /// <param name="coordinate">Position to check.</param>
         [CanBeNull, Pure]
         public Ship GetShipAt(in Coordinate coordinate)
         {
+            if (_shipsHit[coordinate.X, coordinate.Y] is Ship s)
+                return s;
+
             foreach (Ship ship in Ships)
             {
                 if (ship.IsOnShip(in coordinate))
@@ -128,6 +135,8 @@ namespace BattleshipProtocol.Game
 
             foreach (Ship other in Ships)
             {
+                if (other == ship)
+                    continue;
                 if (other.WillCollide(in coordinate, in orientation, ship.Length))
                     throw new InvalidOperationException("Cannot move ship to that location due to collision with other ship!");
             }

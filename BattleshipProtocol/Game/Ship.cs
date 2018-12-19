@@ -97,10 +97,10 @@ namespace BattleshipProtocol.Game
         /// <param name="orientation">The orientation. Facing north or facing east.</param>
         internal void SetPositionInternal(in Coordinate coordinate, in Orientation orientation)
         {
-            if (coordinate.X > 10 - LengthEast)
+            if (coordinate.X > 10 - (orientation == Orientation.East ? Length : 1))
                 throw new ArgumentOutOfRangeException(nameof(coordinate), "Ship is lapping outside the map on the east edge due to length and orientation.");
 
-            if (coordinate.Y > 10 - LengthSouth)
+            if (coordinate.Y > 10 - (orientation == Orientation.South ? Length : 1))
                 throw new ArgumentOutOfRangeException(nameof(coordinate), "Ship is lapping outside the map on the south edge due to length and orientation.");
 
             X = coordinate.X;
