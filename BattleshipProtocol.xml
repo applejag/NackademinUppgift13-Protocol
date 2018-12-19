@@ -1,0 +1,716 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>BattleshipProtocol</name>
+    </assembly>
+    <members>
+        <member name="P:BattleshipProtocol.BattleGame.IsHost">
+            <summary>
+            Gets whether this application is the server.
+            </summary>
+        </member>
+        <member name="P:BattleshipProtocol.BattleGame.LocalPlayer">
+            <summary>
+            Gets the local player object. That is- information about the player in this application.
+            </summary>
+        </member>
+        <member name="P:BattleshipProtocol.BattleGame.RemotePlayer">
+            <summary>
+            Gets the remote player object. That is- information about the other player.
+            </summary>
+        </member>
+        <member name="P:BattleshipProtocol.BattleGame.GameState">
+            <summary>
+            Gets or sets the state of the connection and game.
+            </summary>
+        </member>
+        <member name="E:BattleshipProtocol.BattleGame.GameStateChanged">
+            <summary>
+            Called when the <see cref="P:BattleshipProtocol.BattleGame.GameState"/> property changes.
+            </summary>
+        </member>
+        <member name="P:BattleshipProtocol.BattleGame.IsLocalsTurn">
+            <summary>
+            Gets or sets whether it's the local players turn. If not, it's the remote players turn.
+            </summary>
+        </member>
+        <member name="E:BattleshipProtocol.BattleGame.LocalsTurnChanged">
+            <summary>
+            Called when the <see cref="P:BattleshipProtocol.BattleGame.IsLocalsTurn"/> property is changed.
+            </summary>
+        </member>
+        <member name="M:BattleshipProtocol.BattleGame.ShootAtAsync(BattleshipProtocol.Game.Coordinate,System.String)">
+            <summary>
+            Shoots at a given <paramref name="coordinate"/> parameter via the <see cref="T:BattleshipProtocol.Game.Commands.FireCommand"/> command.
+            The response will follow in a response packet and be handled automatically by <see cref="T:BattleshipProtocol.Game.Commands.FireCommand"/>.
+            </summary>
+            <param name="coordinate">The coordinate to shoot at.</param>
+            <param name="message">The optional message to append to the command.</param>
+            <exception cref="T:System.InvalidOperationException">Not in <see cref="F:BattleshipProtocol.Protocol.GameState.InGame"/> state. Use <see cref="P:BattleshipProtocol.BattleGame.GameState"/>.</exception>
+            <exception cref="T:System.InvalidOperationException">It's not your turn. Use <see cref="P:BattleshipProtocol.BattleGame.IsLocalsTurn"/>.</exception>
+            <exception cref="T:System.InvalidOperationException">No FIRE command has been registered.</exception>
+            <exception cref="T:System.InvalidOperationException">A FIRE command is already pending.</exception>
+            <exception cref="T:System.ArgumentException">Coordinate has already been shot at.</exception>
+        </member>
+        <member name="M:BattleshipProtocol.BattleGame.StartGameAsync">
+            <summary>
+            Sends a start game message.
+            The response will follow in a response packet and be handled automatically by <see cref="T:BattleshipProtocol.Game.Commands.StartCommand"/>.
+            </summary>
+            <exception cref="T:System.InvalidOperationException">Not in <see cref="F:BattleshipProtocol.Protocol.GameState.Idle"/> state. Use <see cref="P:BattleshipProtocol.BattleGame.GameState"/>.</exception>
+            <exception cref="T:System.InvalidOperationException">You're not the client. Only client can start the game.</exception>
+            <exception cref="T:System.InvalidOperationException">No START command has been registered.</exception>
+        </member>
+        <member name="M:BattleshipProtocol.BattleGame.Disconnect(System.Int32)">
+            <summary>
+            Disconnects from the remote by sending a disconnected command,
+            with a timeout if the remote doesn't respond with a disconnected response.
+            </summary>
+            <param name="timeout">Timeout in milliseconds.</param>
+        </member>
+        <member name="M:BattleshipProtocol.BattleGame.ConnectAsync(System.String,System.UInt16,BattleshipProtocol.Game.Board,System.String,System.Int32)">
+            <summary>
+            <para>
+            Connects to a host at a given address and completes the version handshake. Supports both IPv4 and IPv6, given it is enabled on the OS.
+            </para>
+            <para>
+            On connection error, use <see cref="P:System.Net.Sockets.SocketException.ErrorCode"/> from the thrown error to obtain the cause of the error.
+            Refer to the <see href="https://docs.microsoft.com/en-us/windows/desktop/winsock/windows-sockets-error-codes-2">Windows Sockets version 2 API error code</see> documentation.
+            </para>
+            <para>
+            On packet error, use <see cref="P:BattleshipProtocol.Protocol.Exceptions.ProtocolException.ErrorMessage"/> from the thrown error to obtain the cause of the error. 
+            </para>
+            </summary>
+            <param name="address">Host name or IP address.</param>
+            <param name="port">Host port.</param>
+            <param name="localBoard">The board of the local player.</param>
+            <param name="localPlayerName">The name of the local player.</param>
+            <param name="timeout">Timeout in milliseconds for awaiting version handshake.</param>
+            <exception cref="T:System.Net.Sockets.SocketException">An error occurred when accessing the socket.</exception>
+            <exception cref="T:System.ArgumentNullException">The <paramref name="address"/> parameter is null.</exception>
+            <exception cref="T:BattleshipProtocol.Protocol.Exceptions.ProtocolException">Version handshake failed.</exception>
+            <exception cref="T:System.Net.Sockets.SocketException">An error occurred when accessing the socket.</exception>
+            <exception cref="T:System.ArgumentNullException">The <paramref name="localPlayerName"/> parameter is null or whitespace.</exception>
+            <exception cref="T:System.ArgumentException">The ships in the <paramref name="localBoard"/> parameter is not set up.</exception>
+        </member>
+        <member name="M:BattleshipProtocol.BattleGame.ConnectAsync(BattleshipProtocol.Protocol.ConnectionSettings,BattleshipProtocol.Game.Board,System.String,System.Threading.CancellationToken)">
+            <summary>
+            <para>
+            Connects to a host at a given address and completes the version handshake. Supports both IPv4 and IPv6, given it is enabled on the OS.
+            </para>
+            <para>
+            On connection error, use <see cref="P:System.Net.Sockets.SocketException.ErrorCode"/> from the thrown error to obtain the cause of the error.
+            Refer to the <see href="https://docs.microsoft.com/en-us/windows/desktop/winsock/windows-sockets-error-codes-2">Windows Sockets version 2 API error code</see> documentation.
+            </para>
+            <para>
+            On packet error, use <see cref="P:BattleshipProtocol.Protocol.Exceptions.ProtocolException.ErrorMessage"/> from the thrown error to obtain the cause of the error. 
+            </para>
+            </summary>
+            <param name="connectionSettings">The settings for the connection.</param>
+            <param name="localBoard">The board of the local player.</param>
+            <param name="localPlayerName">The name of the local player.</param>
+            <param name="cancellationToken">Cancellation token to cancel this action.</param>
+            <exception cref="T:System.Net.Sockets.SocketException">An error occurred when accessing the socket.</exception>
+            <exception cref="T:BattleshipProtocol.Protocol.Exceptions.ProtocolException">Version handshake failed.</exception>
+            <exception cref="T:System.Net.Sockets.SocketException">An error occurred when accessing the socket.</exception>
+            <exception cref="T:System.ArgumentNullException">The <paramref name="localPlayerName"/> parameter is null or whitespace.</exception>
+            <exception cref="T:System.ArgumentException">The ships in the <paramref name="localBoard"/> parameter is not set up.</exception>
+        </member>
+        <member name="M:BattleshipProtocol.BattleGame.HostAndWaitAsync(System.UInt16,BattleshipProtocol.Game.Board,System.String,System.Threading.CancellationToken)">
+            <summary>
+            <para>
+            Host on a given port. Will return once a client has connected.
+            </para>
+            <para>
+            On connection error, use <see cref="P:System.Net.Sockets.SocketException.ErrorCode"/> from the thrown error to obtain the cause of the error.
+            Refer to the <see href="https://docs.microsoft.com/en-us/windows/desktop/winsock/windows-sockets-error-codes-2">Windows Sockets version 2 API error code</see> documentation.
+            </para>
+            </summary>
+            <param name="port">Host port.</param>
+            <param name="localBoard">The board of the local player.</param>
+            <param name="localPlayerName">The name of the local player.</param>
+            <param name="cancellationToken">Cancellation token to cancel this action.</param>
+            <exception cref="T:System.Net.Sockets.SocketException">An error occurred when accessing the socket.</exception>
+            <exception cref="T:System.ArgumentNullException">The <paramref name="localPlayerName"/> parameter is null or whitespace.</exception>
+            <exception cref="T:System.ArgumentException">The ships in the <paramref name="localBoard"/> parameter is not set up.</exception>
+        </member>
+        <member name="M:BattleshipProtocol.BattleGame.HostAndWaitAsync(System.UInt16,BattleshipProtocol.Game.Board,System.String)">
+            <summary>
+            <para>
+            Host on a given port. Will return once a client has connected.
+            </para>
+            <para>
+            On connection error, use <see cref="P:System.Net.Sockets.SocketException.ErrorCode"/> from the thrown error to obtain the cause of the error.
+            Refer to the <see href="https://docs.microsoft.com/en-us/windows/desktop/winsock/windows-sockets-error-codes-2">Windows Sockets version 2 API error code</see> documentation.
+            </para>
+            </summary>
+            <param name="port">Host port.</param>
+            <param name="localBoard">The board of the local player.</param>
+            <param name="localPlayerName">The name of the local player.</param>
+            <exception cref="T:System.Net.Sockets.SocketException">An error occurred when accessing the socket.</exception>
+            <exception cref="T:System.ArgumentNullException">The <paramref name="localPlayerName"/> parameter is null or whitespace.</exception>
+            <exception cref="T:System.ArgumentException">The ships in the <paramref name="localBoard"/> parameter is not set up.</exception>
+        </member>
+        <member name="M:BattleshipProtocol.BattleGame.HostAndWaitAsync(BattleshipProtocol.Protocol.ConnectionSettings,BattleshipProtocol.Game.Board,System.String,System.Threading.CancellationToken)">
+            <summary>
+            <para>
+            Host on a given port. Will return once a client has connected.
+            </para>
+            <para>
+            On connection error, use <see cref="P:System.Net.Sockets.SocketException.ErrorCode"/> from the thrown error to obtain the cause of the error.
+            Refer to the <see href="https://docs.microsoft.com/en-us/windows/desktop/winsock/windows-sockets-error-codes-2">Windows Sockets version 2 API error code</see> documentation.
+            </para>
+            </summary>
+            <param name="connectionSettings">The settings for connecting. The <see cref="P:BattleshipProtocol.Protocol.ConnectionSettings.Address"/> property is ignored.</param>
+            <param name="localBoard">The board of the local player.</param>
+            <param name="localPlayerName">The name of the local player.</param>
+            <param name="cancellationToken">Cancellation token to cancel this action.</param>
+            <exception cref="T:System.Net.Sockets.SocketException">An error occurred when accessing the socket.</exception>
+            <exception cref="T:System.ArgumentNullException">The <paramref name="localPlayerName"/> parameter is null or whitespace.</exception>
+            <exception cref="T:System.ArgumentException">The ships in the <paramref name="localBoard"/> parameter is not set up.</exception>
+        </member>
+        <member name="T:BattleshipProtocol.Game.Board">
+            <summary>
+            A 10 by 10 game board. Stores info about shot history and ships. Checks for ship placement collisions.
+            </summary>
+        </member>
+        <member name="P:BattleshipProtocol.Game.Board.Ships">
+            <summary>
+            The collection of ships in this board. Is guaranteed to be only one of each <see cref="T:BattleshipProtocol.Game.ShipType"/>.
+            </summary>
+        </member>
+        <member name="M:BattleshipProtocol.Game.Board.GetShip(BattleshipProtocol.Game.ShipType@)">
+            <summary>
+            Get the ship of a certain type from this board.
+            </summary>
+            <param name="type">The ship type.</param>
+        </member>
+        <member name="M:BattleshipProtocol.Game.Board.RegisterShot(BattleshipProtocol.Game.Coordinate@,System.Nullable{BattleshipProtocol.Game.ShipType}@)">
+            <summary>
+            Register a shot and decrement the ships health. Returns the ship that was shot, if any.
+            </summary>
+            <exception cref="T:System.ArgumentOutOfRangeException">If position from <paramref name="coordinate"/> is outside the grid.</exception>
+            <exception cref="T:System.InvalidOperationException">If board has already been shot at the given <paramref name="coordinate"/></exception>
+            <param name="coordinate">Position to check.</param>
+            <param name="hitShip">The ship that was hit, or null for miss.</param>
+        </member>
+        <member name="M:BattleshipProtocol.Game.Board.ShootAtInternal(BattleshipProtocol.Game.Coordinate@)">
+            <summary>
+            Shoot at a grid location. Returns the ship that was shot, if any.
+            </summary>
+            <exception cref="T:System.ArgumentOutOfRangeException">If position from <paramref name="coordinate"/> is outside the grid.</exception>
+            <exception cref="T:System.InvalidOperationException">If board has already been shot at the given <paramref name="coordinate"/></exception>
+            <param name="coordinate">Position to check.</param>
+        </member>
+        <member name="M:BattleshipProtocol.Game.Board.GetShipAt(BattleshipProtocol.Game.Coordinate@)">
+            <summary>
+            Get the ship at position.
+            If a ship of unknown location (ex: remote board) was hit at <paramref name="coordinate"/> then this returns that ship.
+            </summary>
+            <param name="coordinate">Position to check.</param>
+        </member>
+        <member name="M:BattleshipProtocol.Game.Board.IsShotAt(BattleshipProtocol.Game.Coordinate@)">
+            <summary>
+            Has this position been shot at?
+            </summary>
+            <param name="coordinate">Position to check.</param>
+        </member>
+        <member name="M:BattleshipProtocol.Game.Board.MoveShip(BattleshipProtocol.Game.ShipType,BattleshipProtocol.Game.Coordinate@,BattleshipProtocol.Game.Orientation@)">
+            <summary>
+            Moves a ship to a new location on this grid. Throws error if placed outside grid or collides with other ship.
+            </summary>
+            <exception cref="T:System.ArgumentOutOfRangeException">If <paramref name="coordinate"/>+<see cref="P:BattleshipProtocol.Game.Ship.LengthEast"/> is outside the map.</exception>
+            <exception cref="T:System.ArgumentOutOfRangeException">If <paramref name="coordinate"/>+<see cref="P:BattleshipProtocol.Game.Ship.LengthSouth"/> is outside the map.</exception>
+            <exception cref="T:System.InvalidOperationException">If ship collides with other ship.</exception>
+            <param name="shipType">The type of the ship to move.</param>
+            <param name="coordinate">Position to check.</param>
+            <param name="orientation">The orientation. Facing north or facing east.</param>
+        </member>
+        <member name="M:BattleshipProtocol.Game.Board.IsOnBoard(System.Int32,System.Int32)">
+            <summary>
+            Is the position inside the game board?
+            </summary>
+            <param name="x">X position to check. 0 is far west (A). 9 is far east (J).</param>
+            <param name="y">Y position to check. 0 is far north (1). 9 is far south (10).</param>
+        </member>
+        <member name="P:BattleshipProtocol.Game.FireOutcome.Coordinate">
+            <summary>
+            The coordinate of the action.
+            </summary>
+        </member>
+        <member name="P:BattleshipProtocol.Game.FireOutcome.ShipHit">
+            <summary>
+            The ship that got hit, or null on miss.
+            </summary>
+        </member>
+        <member name="P:BattleshipProtocol.Game.FireOutcome.ShipSunk">
+            <summary>
+            Did the hit ship get sunk?
+            </summary>
+        </member>
+        <member name="P:BattleshipProtocol.Game.Coordinate.X">
+            <summary>
+            Gets or sets the X component of this coordinate. Ranges from 0 (west) to 9 (east).
+            </summary>
+        </member>
+        <member name="P:BattleshipProtocol.Game.Coordinate.Y">
+            <summary>
+            Gets or sets the Y component of this coordinate. Ranges from 0 (north) to 9 (south).
+            </summary>
+        </member>
+        <member name="P:BattleshipProtocol.Game.Coordinate.Horizontal">
+            <summary>
+            Gets the horizontal translated component of this coordinate. Ranges from 1 (west) to 9 (east).
+            </summary>
+        </member>
+        <member name="P:BattleshipProtocol.Game.Coordinate.Vertical">
+            <summary>
+            Gets the vertical translated component of this coordinate. Ranges from A (north) to J (south).
+            </summary>
+        </member>
+        <member name="P:BattleshipProtocol.Game.Commands.HelloCommand.Command">
+            <inheritdoc />
+        </member>
+        <member name="P:BattleshipProtocol.Game.Commands.HelloCommand.RoutedResponseCodes">
+            <inheritdoc />
+        </member>
+        <member name="M:BattleshipProtocol.Game.Commands.HelloCommand.OnCommandAsync(BattleshipProtocol.Protocol.PacketConnection,System.String)">
+            <inheritdoc />
+        </member>
+        <member name="M:BattleshipProtocol.Game.Commands.HelloCommand.OnResponseAsync(BattleshipProtocol.Protocol.PacketConnection,BattleshipProtocol.Protocol.Response)">
+            <inheritdoc />
+        </member>
+        <member name="P:BattleshipProtocol.Game.Commands.QuitCommand.Command">
+            <inheritdoc />
+        </member>
+        <member name="P:BattleshipProtocol.Game.Commands.QuitCommand.RoutedResponseCodes">
+            <inheritdoc />
+        </member>
+        <member name="M:BattleshipProtocol.Game.Commands.QuitCommand.OnCommandAsync(BattleshipProtocol.Protocol.PacketConnection,System.String)">
+            <inheritdoc />
+        </member>
+        <member name="M:BattleshipProtocol.Game.Commands.QuitCommand.OnResponseAsync(BattleshipProtocol.Protocol.PacketConnection,BattleshipProtocol.Protocol.Response)">
+            <inheritdoc />
+        </member>
+        <member name="P:BattleshipProtocol.Game.Commands.FireCommand.Command">
+            <inheritdoc />
+        </member>
+        <member name="E:BattleshipProtocol.Game.Commands.FireCommand.TakenFire">
+            <summary>
+            Called when fired upon, including the outcome.
+            </summary>
+        </member>
+        <member name="E:BattleshipProtocol.Game.Commands.FireCommand.TakenFireMessage">
+            <summary>
+            Called directly after <see cref="E:BattleshipProtocol.Game.Commands.FireCommand.TakenFire"/> if the command included a taunting message.
+            </summary>
+        </member>
+        <member name="E:BattleshipProtocol.Game.Commands.FireCommand.FireResponse">
+            <summary>
+            Called when a response of a fire sent by the local player is received, including the outcome.
+            </summary>
+        </member>
+        <member name="M:BattleshipProtocol.Game.Commands.FireCommand.OnCommandAsync(BattleshipProtocol.Protocol.PacketConnection,System.String)">
+            <inheritdoc />
+        </member>
+        <member name="M:BattleshipProtocol.Game.Commands.FireCommand.OnResponseAsync(BattleshipProtocol.Protocol.PacketConnection,BattleshipProtocol.Protocol.Response)">
+            <inheritdoc />
+        </member>
+        <member name="P:BattleshipProtocol.Game.Commands.HelpCommand.Command">
+            <inheritdoc />
+        </member>
+        <member name="P:BattleshipProtocol.Game.Commands.HelpCommand.RoutedResponseCodes">
+            <inheritdoc />
+        </member>
+        <member name="M:BattleshipProtocol.Game.Commands.HelpCommand.OnCommandAsync(BattleshipProtocol.Protocol.PacketConnection,System.String)">
+            <inheritdoc />
+        </member>
+        <member name="M:BattleshipProtocol.Game.Commands.HelpCommand.OnResponseAsync(BattleshipProtocol.Protocol.PacketConnection,BattleshipProtocol.Protocol.Response)">
+            <inheritdoc />
+        </member>
+        <member name="P:BattleshipProtocol.Game.Commands.StartCommand.Command">
+            <inheritdoc />
+        </member>
+        <member name="P:BattleshipProtocol.Game.Commands.StartCommand.RoutedResponseCodes">
+            <inheritdoc />
+        </member>
+        <member name="M:BattleshipProtocol.Game.Commands.StartCommand.OnCommandAsync(BattleshipProtocol.Protocol.PacketConnection,System.String)">
+            <inheritdoc />
+        </member>
+        <member name="M:BattleshipProtocol.Game.Commands.StartCommand.OnResponseAsync(BattleshipProtocol.Protocol.PacketConnection,BattleshipProtocol.Protocol.Response)">
+            <inheritdoc />
+        </member>
+        <member name="F:BattleshipProtocol.Game.Orientation.South">
+            <summary>
+            South direction (+y).
+            </summary>
+        </member>
+        <member name="F:BattleshipProtocol.Game.Orientation.East">
+            <summary>
+            East direction (+x).
+            </summary>
+        </member>
+        <member name="P:BattleshipProtocol.Game.Ship.Name">
+            <summary>
+            Gets the ship name.
+            </summary>
+        </member>
+        <member name="P:BattleshipProtocol.Game.Ship.Type">
+            <summary>
+            Gets the ship type.
+            </summary>
+        </member>
+        <member name="P:BattleshipProtocol.Game.Ship.Length">
+            <summary>
+            Gets the length for bounding box of this ship.
+            </summary>
+        </member>
+        <member name="P:BattleshipProtocol.Game.Ship.LengthSouth">
+            <summary>
+            Gets the length of bounding box in the south direction.
+            </summary>
+        </member>
+        <member name="P:BattleshipProtocol.Game.Ship.LengthEast">
+            <summary>
+            Gets the length of bounding box in the east direction.
+            </summary>
+        </member>
+        <member name="P:BattleshipProtocol.Game.Ship.Health">
+            <summary>
+            Gets the remaining health of this ship.
+            </summary>
+        </member>
+        <member name="E:BattleshipProtocol.Game.Ship.ShipDamaged">
+            <summary>
+            Called when health is changed. When ship gets damaged.
+            </summary>
+        </member>
+        <member name="P:BattleshipProtocol.Game.Ship.Orientation">
+            <summary>
+            Gets the orientation of the boat. Facing.
+            </summary>
+        </member>
+        <member name="P:BattleshipProtocol.Game.Ship.X">
+            <summary>
+            Gets the X position of this ship, relative to the north-west corner of the ship. 0 is far west (A). 9 is far east (J).
+            Is set to -1 if unknown or unset location (for example, pre-placed and the opponents ships).
+            </summary>
+        </member>
+        <member name="P:BattleshipProtocol.Game.Ship.Y">
+            <summary>
+            Gets the Y position of this ship, relative to the north-west corner of the ship. 0 is far north (1). 9 is far south (10).
+            Is set to -1 if unknown or unset location (for example, pre-placed and the opponents ships).
+            </summary>
+        </member>
+        <member name="E:BattleshipProtocol.Game.Ship.ShipMoved">
+            <summary>
+            Called when ships position is changed. This includes <see cref="P:BattleshipProtocol.Game.Ship.X"/>, <see cref="P:BattleshipProtocol.Game.Ship.Y"/>, and <see cref="P:BattleshipProtocol.Game.Ship.Orientation"/>.
+            </summary>
+        </member>
+        <member name="P:BattleshipProtocol.Game.Ship.IsOnBoard">
+            <summary>
+            Gets whether this boat on the grid? I.e. has it been placed by the user. 
+            </summary>
+        </member>
+        <member name="M:BattleshipProtocol.Game.Ship.SetPositionInternal(BattleshipProtocol.Game.Coordinate@,BattleshipProtocol.Game.Orientation@)">
+            <summary>
+            Sets the position values of this ship. Throws error if outside the grid. Does not check for collision with other boats.
+            </summary>
+            <exception cref="T:System.ArgumentOutOfRangeException">If <paramref name="coordinate"/>+<see cref="P:BattleshipProtocol.Game.Ship.Length"/> is beyond the east map boundary when <paramref name="orientation"/> is <see cref="F:BattleshipProtocol.Game.Orientation.South">South</see>.</exception>
+            <exception cref="T:System.ArgumentOutOfRangeException">If <paramref name="coordinate"/>+<see cref="P:BattleshipProtocol.Game.Ship.Length"/> is beyond the south map boundary when <paramref name="orientation"/> is <see cref="F:BattleshipProtocol.Game.Orientation.East">East</see>.</exception>
+            <param name="coordinate">The position to check.</param>
+            <param name="orientation">The orientation. Facing north or facing east.</param>
+        </member>
+        <member name="M:BattleshipProtocol.Game.Ship.WillCollide(BattleshipProtocol.Game.Coordinate@,BattleshipProtocol.Game.Orientation@,System.Int32@)">
+            <summary>
+            Would this ship collide with a ship that would be placed at this location, with this orientation, and with that length?
+            </summary>
+            <param name="other">Position of theoretical other ship.</param>
+            <param name="otherOrientation">The orientation of theoretical other ship. Facing north or facing east.</param>
+            <param name="otherLength">Length of theoretical other ship.</param>
+        </member>
+        <member name="M:BattleshipProtocol.Game.Ship.IsOnShip(BattleshipProtocol.Game.Coordinate@)">
+            <summary>
+            Is this coordinate on this ship?
+            </summary>
+            <param name="coordinate">Position to check.</param>
+        </member>
+        <member name="M:BattleshipProtocol.Game.Ship.GetShipLength(BattleshipProtocol.Game.ShipType@)">
+            <summary>
+            Get the length of a certain ship type.
+            </summary>
+            <exception cref="T:System.ComponentModel.InvalidEnumArgumentException"></exception>
+            <param name="type">The ship type.</param>
+        </member>
+        <member name="P:BattleshipProtocol.Protocol.ConnectionSettings.Address">
+            <summary>
+            Address for connecting to host. Is ignored when hosting.
+            Default: <see cref="F:System.String.Empty"/>
+            </summary>
+        </member>
+        <member name="P:BattleshipProtocol.Protocol.ConnectionSettings.Port">
+            <summary>
+            Port for connecting or hosting upon.
+            Default: <code>8888</code>
+            </summary>
+        </member>
+        <member name="P:BattleshipProtocol.Protocol.ConnectionSettings.Encoding">
+            <summary>
+            Encoding used when receiving and sending packets.
+            Default: <see cref="P:System.Text.Encoding.UTF8"/> with BOM emitting disabled.
+            </summary>
+        </member>
+        <member name="P:BattleshipProtocol.Protocol.ConnectionSettings.DetectEncodingFromBOM">
+            <summary>
+            Enables auto detecting encoding from the initial BOM.
+            Default: <code>true</code>
+            </summary>
+        </member>
+        <member name="T:BattleshipProtocol.Protocol.Exceptions.ProtocolBoundedResponseException">
+            <summary>
+            Represents an error for when a command or response is received by a server/host, but only available to a client
+            </summary>
+        </member>
+        <member name="T:BattleshipProtocol.Protocol.Exceptions.ProtocolBoundedCommandException">
+            <summary>
+            Represents an error for when a command or response is received by a client, but only available to a server/host
+            </summary>
+        </member>
+        <member name="M:BattleshipProtocol.Protocol.Internal.Extensions.ThreadingExtensions.EnterAsync(System.Threading.SemaphoreSlim)">
+            <summary>
+            Wait to enter the semaphore, then returns a disposable object that releases from the semaphore when disposed.
+            Meant to be used in a using() {} block.
+            </summary>
+            <param name="semaphore">The semaphore.</param>
+        </member>
+        <member name="M:BattleshipProtocol.Protocol.Internal.Extensions.ThreadingExtensions.Enter(System.Threading.SemaphoreSlim)">
+            <summary>
+            Wait to enter the semaphore, then returns a disposable object that releases from the semaphore when disposed.
+            Meant to be used in a using() {} block.
+            </summary>
+            <param name="semaphore">The semaphore.</param>
+        </member>
+        <member name="M:BattleshipProtocol.Protocol.Internal.StreamConnection.#ctor(System.IO.Stream@)">
+            <inheritdoc />
+            <summary>
+            Initializes the stream connection with <see cref="P:System.Text.Encoding.UTF8"/> encoding.
+            </summary>
+            <param name="stream">The stream to use when reading and writing data.</param>
+        </member>
+        <member name="M:BattleshipProtocol.Protocol.Internal.StreamConnection.#ctor(System.IO.Stream@,System.Text.Encoding@,System.Boolean@)">
+            <summary>
+            Initializes the stream connection with custom encoding.
+            </summary>
+            <param name="stream">The stream to use when reading and writing data.</param>
+            <param name="encoding">The encoding to use when reading and writing data.</param>
+            <param name="detectFromBom">Should try detect encoding from the byte order marks?</param>
+        </member>
+        <member name="M:BattleshipProtocol.Protocol.Internal.StreamConnection.BeginListening">
+            <summary>
+            Starts the reading loop.
+            To catch these messages, subscribe using the <see cref="!:Subscribe"/> method.
+            </summary>
+            <exception cref="T:System.InvalidOperationException">Thrown if it's already listening.</exception>
+        </member>
+        <member name="M:BattleshipProtocol.Protocol.Internal.StreamConnection.ReadAndHandleInternal">
+            <summary>
+            Waits for one line of text.
+            To catch these messages, subscribe using the <see cref="!:Subscribe"/> pattern.
+            </summary>
+            <exception cref="T:System.InvalidOperationException">Thrown if the connection has been closed.</exception>
+        </member>
+        <member name="M:BattleshipProtocol.Protocol.Internal.StreamConnection.ReadLine">
+            <summary>
+            Waits and returns one line of text. This bypasses the <see cref="M:System.IObservable`1.Subscribe(System.IObserver{`0})"/> pattern.
+            </summary>
+            <exception cref="T:System.InvalidOperationException">Thrown if the connection has been closed.</exception>
+            <exception cref="T:System.InvalidOperationException">Thrown if <see cref="M:BattleshipProtocol.Protocol.Internal.StreamConnection.BeginListening"/> is running.</exception>
+        </member>
+        <member name="M:BattleshipProtocol.Protocol.Internal.StreamConnection.ReadLineAsync">
+            <summary>
+            Waits and returns one line of text. This bypasses the <see cref="M:System.IObservable`1.Subscribe(System.IObserver{`0})"/> pattern.
+            </summary>
+            <exception cref="T:System.InvalidOperationException">Thrown if the connection has been closed.</exception>
+            <exception cref="T:System.InvalidOperationException">Thrown if <see cref="M:BattleshipProtocol.Protocol.Internal.StreamConnection.BeginListening"/> is running.</exception>
+        </member>
+        <member name="M:BattleshipProtocol.Protocol.Internal.StreamConnection.SendTextAsync(System.String)">
+            <summary>
+            Send a textblock (asynchronously) to the other client.
+            </summary>
+            <param name="text">The text to transmit.</param>
+            <exception cref="T:System.InvalidOperationException">Thrown if the connection has been closed.</exception>
+        </member>
+        <member name="M:BattleshipProtocol.Protocol.Internal.StreamConnection.SendErrorAsync(BattleshipProtocol.Protocol.Exceptions.ProtocolException)">
+            <summary>
+            Send an exception (asynchronously) to the other client in the form of a response code.
+            </summary>
+            <param name="error">The exception to transmit.</param>
+            <exception cref="T:System.InvalidOperationException">Thrown if the connection has been closed.</exception>
+        </member>
+        <member name="M:BattleshipProtocol.Protocol.Internal.StreamConnection.SendResponseAsync(BattleshipProtocol.Protocol.Response)">
+            <summary>
+            Send a response (asynchronously) to the other client.
+            </summary>
+            <param name="response">The response to transmit.</param>
+            <exception cref="T:System.InvalidOperationException">Thrown if the connection has been closed.</exception>
+        </member>
+        <member name="M:BattleshipProtocol.Protocol.Internal.StreamConnection.SendResponseAsync(BattleshipProtocol.Protocol.ResponseCode,System.String)">
+            <summary>
+            Send a response (asynchronously) to the other client.
+            </summary>
+            <param name="code">The response code to transmit.</param>
+            <param name="message">The optional message to append to the response.</param>
+            <exception cref="T:System.InvalidOperationException">Thrown if the connection has been closed.</exception>
+        </member>
+        <member name="M:BattleshipProtocol.Protocol.Internal.StreamConnection.SendCommandAsync(BattleshipProtocol.Protocol.ICommandTemplate,System.String)">
+            <summary>
+            Send a command (asynchronously) to the other client.
+            </summary>
+            <param name="commandTemplate">The command to transmit.</param>
+            <param name="argument">The optional argument.</param>
+            <exception cref="T:System.InvalidOperationException">Thrown if the connection has been closed.</exception>
+        </member>
+        <member name="P:BattleshipProtocol.Protocol.PacketConnection.ConsecutiveErrorLimit">
+            <summary>
+            Gets or sets the consecutive error limit. Default is 3.
+            </summary>
+        </member>
+        <member name="M:BattleshipProtocol.Protocol.PacketConnection.#ctor(System.IO.Stream@)">
+            <inheritdoc/>
+            <summary>
+            Initializes the Battleship packets connection with <see cref="P:System.Text.Encoding.UTF8"/> encoding.
+            </summary>
+        </member>
+        <member name="M:BattleshipProtocol.Protocol.PacketConnection.#ctor(System.IO.Stream@,System.Text.Encoding@,System.Boolean@)">
+            <inheritdoc/>
+            <summary>
+            Initializes the Battleship packets connection with custom encoding.
+            </summary>
+        </member>
+        <member name="M:BattleshipProtocol.Protocol.PacketConnection.ExpectCommandAsync">
+            <summary>
+            Waits and returns the received command, if successfully parsed. Else it will throw.
+            </summary>
+            <exception cref="T:BattleshipProtocol.Protocol.Exceptions.ProtocolFormatException">Parsing error.</exception>
+            <exception cref="T:BattleshipProtocol.Protocol.Exceptions.ProtocolUnknownCommandException">Command is not registered.</exception>
+            <exception cref="T:BattleshipProtocol.Protocol.Exceptions.ProtocolUnexpectedDisconnect">Connection closed, couldn't receive command.</exception>
+        </member>
+        <member name="M:BattleshipProtocol.Protocol.PacketConnection.GetCommand(System.String)">
+            <summary>
+            Gets first command by name via <see cref="P:BattleshipProtocol.Protocol.ICommandTemplate.Command"/> (case insensitive). Returns null if no match.
+            </summary>
+            <param name="command">The command name to match.</param>
+        </member>
+        <member name="M:BattleshipProtocol.Protocol.PacketConnection.GetCommand``1">
+            <summary>
+            Gets first command by type. Returns null if no match.
+            </summary>
+            <typeparam name="T">The command type to match.</typeparam>
+        </member>
+        <member name="M:BattleshipProtocol.Protocol.PacketConnection.RegisterCommand(BattleshipProtocol.Protocol.ICommandTemplate)">
+            <summary>
+            Register a command template to listen for. Commands must be unique to their <see cref="P:BattleshipProtocol.Protocol.ICommandTemplate.Command"/> property (case insensitive).
+            </summary>
+            <exception cref="T:System.ArgumentNullException">Thrown if <paramref name="commandTemplate"/> is null.</exception>
+            <exception cref="T:System.ArgumentException">Thrown if <see cref="P:BattleshipProtocol.Protocol.ICommandTemplate.Command">Command</see> property of <paramref name="commandTemplate"/> is already registered.</exception>
+            <param name="commandTemplate">The command template.</param>
+        </member>
+        <member name="M:BattleshipProtocol.Protocol.PacketConnection.SendCommandAsync``1(System.String)">
+            <summary>
+            Send a command (asynchronously) to the other client, with the optional argument.
+            </summary>
+            <param name="argument">The optional argument to append to the command. Should not contain newlines.</param>
+            <exception cref="T:System.ArgumentException">Thrown if <typeparamref name="T"/> did not match any registered command.</exception>
+            <exception cref="T:System.InvalidOperationException">Thrown if the connection has been closed.</exception>
+        </member>
+        <member name="P:BattleshipProtocol.Protocol.ICommandTemplate.Command">
+            <summary>
+            The ~4-5 character code of this command.
+            </summary>
+        </member>
+        <member name="P:BattleshipProtocol.Protocol.ICommandTemplate.RoutedResponseCodes">
+            <summary>
+            Which response codes that shall be routed to this command.
+            </summary>
+        </member>
+        <member name="M:BattleshipProtocol.Protocol.ICommandTemplate.OnCommandAsync(BattleshipProtocol.Protocol.PacketConnection,System.String)">
+            <summary>
+            Handles a received command from the other client.
+            </summary>
+            <param name="context">The game context.</param>
+            <param name="argument">The argument received with the command.</param>
+        </member>
+        <member name="M:BattleshipProtocol.Protocol.ICommandTemplate.OnResponseAsync(BattleshipProtocol.Protocol.PacketConnection,BattleshipProtocol.Protocol.Response)">
+            <summary>
+            Handles a received response from the other client.
+            </summary>
+            <param name="context">The game context.</param>
+            <param name="response">The response.</param>
+        </member>
+        <member name="F:BattleshipProtocol.Protocol.ResponseCode.VersionGreeting">
+            <summary>Client bound. Greeting. Sent by server on connection established.</summary>
+        </member>
+        <member name="F:BattleshipProtocol.Protocol.ResponseCode.Handshake">
+            <summary>Server bound. Handshake response, includes other players name.</summary>
+        </member>
+        <member name="F:BattleshipProtocol.Protocol.ResponseCode.StartClient">
+            <summary>Client bound. Sent by server upon new game, to indicate the client starts.</summary>
+        </member>
+        <member name="F:BattleshipProtocol.Protocol.ResponseCode.StartHost">
+            <summary>Client bound. Sent by server upon new game, to indicate the server starts.</summary>
+        </member>
+        <member name="F:BattleshipProtocol.Protocol.ResponseCode.FireMiss">
+            <summary>Client/server bound. Sent as response to a FIRE. Indicates a miss.</summary>
+        </member>
+        <member name="F:BattleshipProtocol.Protocol.ResponseCode.FireHitCarrier">
+            <summary>Client/server bound. Sent as response to a FIRE. Indicates a hit on the <see cref="F:BattleshipProtocol.Game.ShipType.Carrier"/> ship.</summary>
+        </member>
+        <member name="F:BattleshipProtocol.Protocol.ResponseCode.FireHitBattleship">
+            <summary>Client/server bound. Sent as response to a FIRE. Indicates a hit on the <see cref="F:BattleshipProtocol.Game.ShipType.Battleship"/> ship.</summary>
+        </member>
+        <member name="F:BattleshipProtocol.Protocol.ResponseCode.FireHitDestroyer">
+            <summary>Client/server bound. Sent as response to a FIRE. Indicates a hit on the <see cref="F:BattleshipProtocol.Game.ShipType.Destroyer"/> ship.</summary>
+        </member>
+        <member name="F:BattleshipProtocol.Protocol.ResponseCode.FireHitSubmarine">
+            <summary>Client/server bound. Sent as response to a FIRE. Indicates a hit on the <see cref="F:BattleshipProtocol.Game.ShipType.Submarine"/> ship.</summary>
+        </member>
+        <member name="F:BattleshipProtocol.Protocol.ResponseCode.FireHitPatrolBoat">
+            <summary>Client/server bound. Sent as response to a FIRE. Indicates a hit on the <see cref="F:BattleshipProtocol.Game.ShipType.PatrolBoat"/> ship.</summary>
+        </member>
+        <member name="F:BattleshipProtocol.Protocol.ResponseCode.FireSunkCarrier">
+            <summary>Client/server bound. Sent as response to a FIRE. Indicates that the <see cref="F:BattleshipProtocol.Game.ShipType.Carrier"/> ship has been sunk. This is sent instead of <see cref="F:BattleshipProtocol.Protocol.ResponseCode.FireHitCarrier"/></summary>
+        </member>
+        <member name="F:BattleshipProtocol.Protocol.ResponseCode.FireSunkBattleship">
+            <summary>Client/server bound. Sent as response to a FIRE. Indicates that the <see cref="F:BattleshipProtocol.Game.ShipType.Battleship"/> ship has been sunk. This is sent instead of <see cref="F:BattleshipProtocol.Protocol.ResponseCode.FireHitBattleship"/></summary>
+        </member>
+        <member name="F:BattleshipProtocol.Protocol.ResponseCode.FireSunkDestroyer">
+            <summary>Client/server bound. Sent as response to a FIRE. Indicates that the <see cref="F:BattleshipProtocol.Game.ShipType.Destroyer"/> ship has been sunk. This is sent instead of <see cref="F:BattleshipProtocol.Protocol.ResponseCode.FireHitDestroyer"/></summary>
+        </member>
+        <member name="F:BattleshipProtocol.Protocol.ResponseCode.FireSunkSubmarine">
+            <summary>Client/server bound. Sent as response to a FIRE. Indicates that the <see cref="F:BattleshipProtocol.Game.ShipType.Submarine"/> ship has been sunk. This is sent instead of <see cref="F:BattleshipProtocol.Protocol.ResponseCode.FireHitSubmarine"/></summary>
+        </member>
+        <member name="F:BattleshipProtocol.Protocol.ResponseCode.FireSunkPatrolBoat">
+            <summary>Client/server bound. Sent as response to a FIRE. Indicates that the <see cref="F:BattleshipProtocol.Game.ShipType.PatrolBoat"/> ship has been sunk. This is sent instead of <see cref="F:BattleshipProtocol.Protocol.ResponseCode.FireHitPatrolBoat"/></summary>
+        </member>
+        <member name="F:BattleshipProtocol.Protocol.ResponseCode.FireYouWin">
+            <summary>Client/server bound. Sent as response to a FIRE. Indicates that the receiver of the response won the game (sunk the last ship). This is sent instead of any <see cref="F:BattleshipProtocol.Protocol.ResponseCode.FireHitBattleship"/> or <see cref="F:BattleshipProtocol.Protocol.ResponseCode.FireSunkBattleship"/> response.</summary>
+        </member>
+        <member name="F:BattleshipProtocol.Protocol.ResponseCode.ConnectionClosed">
+            <summary>Client bound. The connection has been closed by the server.</summary>
+        </member>
+        <member name="F:BattleshipProtocol.Protocol.ResponseCode.SyntaxError">
+            <summary>
+            Client/server bound.
+            Sent as response when the opponent has sent a command or response that failed to parse.
+            Example: "2b1" will fail to parse as neither command nor response.
+            </summary>
+        </member>
+        <member name="F:BattleshipProtocol.Protocol.ResponseCode.SequenceError">
+            <summary>
+            Client/server bound.
+            Sent as response when the opponent has sent a command or response, during an invalid state of the game (for that message).
+            Example: a FIRE command when it's not their turn.
+            </summary>
+        </member>
+    </members>
+</doc>
