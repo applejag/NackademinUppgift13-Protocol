@@ -135,6 +135,8 @@ namespace BattleshipProtocol.Game
 
             foreach (Ship other in Ships)
             {
+                if (other == ship)
+                    continue;
                 if (other.WillCollide(in coordinate, in orientation, ship.Length))
                     throw new InvalidOperationException("Cannot move ship to that location due to collision with other ship!");
             }
