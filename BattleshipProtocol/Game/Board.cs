@@ -48,6 +48,7 @@ namespace BattleshipProtocol.Game
         /// </summary>
         /// <exception cref="ArgumentOutOfRangeException">If position from <paramref name="coordinate"/> is outside the grid.</exception>
         /// <exception cref="InvalidOperationException">If board has already been shot at the given <paramref name="coordinate"/></exception>
+        /// <exception cref="InvalidOperationException">If the shot ship is registering an invalid location. See <see cref="TryCalculateShipPosition"/>.</exception>
         /// <param name="coordinate">Position to check.</param>
         /// <param name="hitShip">The ship that was hit, or null for miss.</param>
         [CanBeNull]
@@ -56,8 +57,20 @@ namespace BattleshipProtocol.Game
             if (IsShotAt(in coordinate))
                 throw new InvalidOperationException($"Board has already been shot at {coordinate}");
 
-
             Ship ship = hitShip.HasValue ? GetShip(hitShip.Value) : null;
+
+            if (ship != null && !ship.IsOnBoard)
+            {
+                List<Coordinate> shotsOnShip = GetShotsOnShip(ship.Type)
+                    .Append(coordinate).ToList();
+                if (TryCalculateShipPosition(in ship, shotsOnShip, out Coordinate shipCoordinate,
+                    out Orientation shipOrientation))
+                {
+                    if (ship.Health == 1)
+                        MoveShip(ship.Type, shipCoordinate, shipOrientation);
+                }
+            }
+
             _shots[coordinate.X, coordinate.Y] = true;
             _shipsHit[coordinate.X, coordinate.Y] = ship;
 
@@ -73,6 +86,117 @@ namespace BattleshipProtocol.Game
 
             ship.Health--;
             return ship;
+        }
+
+        /// <summary>
+        /// Returns a list of the coordinates where this ship has been shot.
+        /// </summary>
+        /// <param name="shipType">The ship to compare.</param>
+        [NotNull, Pure]
+        public List<Coordinate> GetShotsOnShip(in ShipType shipType)
+        {
+            var coordinates = new List<Coordinate>();
+
+            for (var x = 0; x < 10; x++)
+            {
+                for (var y = 0; y < 10; y++)
+                {
+                    if (_shipsHit[x, y]?.Type != shipType) continue;
+
+                    coordinates.Add((x,y));
+
+                    if (coordinates.Count == _shipsHit[x, y].Length)
+                        return coordinates;
+                }
+            }
+
+            return coordinates;
+        }
+
+        /// <summary>
+        /// Validates a remote ship and where it has been shot in an effort to calculate its location.
+        /// </summary>
+        /// <param name="ship">The ship to validate.</param>
+        /// <param name="coordinates">The coordinates of where this ship has been shot, assuming sorted 0-9 on x and y.</param>
+        /// <param name="coordinate">The coordinate of this ship, if found.</param>
+        /// <param name="orientation">The orientation of this ship, if found.</param>
+        /// <exception cref="InvalidOperationException">The shot coordinates are more than the health of the ship.</exception>
+        /// <exception cref="InvalidOperationException">The shot coordinates do not fall on a straight line.</exception>
+        /// <exception cref="InvalidOperationException">The shot coordinates grasp a grander boundary than possible for the ship.</exception>
+        [Pure]
+        public bool TryCalculateShipPosition([NotNull] in Ship ship, [NotNull] List<Coordinate> coordinates, out Coordinate coordinate, out Orientation orientation)
+        {
+            // Location already found
+            if (ship.IsOnBoard)
+            {
+                coordinate = (ship.X, ship.Y);
+                orientation = ship.Orientation;
+                return false;
+            }
+
+            // No shots
+            if (coordinates.Count == 0)
+            {
+                coordinate = default;
+                orientation = default;
+                return false;
+            }
+
+            if (coordinates.Count > ship.Length)
+                throw new InvalidOperationException($"There has occurred more shots on the {ship.Name} than it has max health.");
+
+            // Determine orientation
+            Coordinate first = coordinates[0];
+            var coordinates1d = new int[coordinates.Count];
+
+            if (TestDimension(0))
+            {
+                orientation = Orientation.East;
+            }
+            else if (TestDimension(1))
+            {
+                orientation = Orientation.South;
+            }
+            else
+            {
+                throw new InvalidOperationException("The shot locations does not lie in a straight line.");
+            }
+
+            // Check range
+            int min = coordinates1d.Min();
+            int max = coordinates1d.Max();
+            int range = max - min;
+            if (range > ship.Length)
+            {
+                throw new InvalidOperationException($"The shot locations spans a longer distance than the max distance for a {ship.Name}.");
+            }
+
+            // Undeterminable
+            if (range != ship.Length)
+            {
+                coordinate = default;
+                return false;
+            }
+
+            // Gottem, assuming they're sorted.
+            coordinate = first;
+            return true;
+
+            bool TestDimension(int dimension)
+            {
+                int firstValue = first[dimension];
+                coordinates1d[0] = firstValue;
+
+                for (var i = 0; i < coordinates.Count; i++)
+                {
+                    if (coordinates[i][dimension] != firstValue)
+                        return false;
+
+                    coordinates1d[i] = coordinates[i][dimension];
+                }
+
+                return true;
+            }
         }
 
         /// <summary>

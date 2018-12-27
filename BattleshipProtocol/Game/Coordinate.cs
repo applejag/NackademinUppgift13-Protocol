@@ -30,6 +30,29 @@ namespace BattleshipProtocol.Game
         }
 
         /// <summary>
+        /// Gets or sets the indexed component of this coordinate. 0 for X and 1 for Y.
+        /// </summary>
+        /// <param name="index">The index.</param>
+        public int this[int index]
+        {
+            get
+            {
+                if (index > 1 || index < 0)
+                    throw new IndexOutOfRangeException();
+                return index == 0 ? _x : _y;
+            }
+            set
+            {
+                if (index > 1 || index < 0)
+                    throw new IndexOutOfRangeException();
+                if (index == 0)
+                    _x = Validate(value);
+                else
+                    _y = Validate(value);
+            }
+        }
+
+        /// <summary>
         /// Gets the horizontal translated component of this coordinate. Ranges from 1 (west) to 9 (east).
         /// </summary>
         public int Horizontal => X + 1;
