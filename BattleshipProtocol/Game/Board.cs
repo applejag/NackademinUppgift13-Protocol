@@ -167,7 +167,7 @@ namespace BattleshipProtocol.Game
             // Check range
             int min = coordinates1d.Min();
             int max = coordinates1d.Max();
-            int range = max - min;
+            int range = max - min + 1;
             if (range > ship.Length)
             {
                 throw new InvalidOperationException($"The shot locations spans a longer distance than the max distance for a {ship.Name}.");
@@ -184,14 +184,16 @@ namespace BattleshipProtocol.Game
             coordinate = first;
             return true;
 
-            bool TestDimension(int dimension)
+            bool TestDimension(in int dimension)
             {
-                int firstValue = first[dimension];
-                coordinates1d[0] = firstValue;
+                int firstOfOtherDimension = first[1 - dimension];
 
                 for (var i = 0; i < coordinates.Count; i++)
                 {
-                    if (coordinates[i][dimension] != firstValue)
+                    // Check if its on the same line
+                    // for x, check so that all y are the same
+                    // for y, check so that all x are the same
+                    if (coordinates[i][1 - dimension] != firstOfOtherDimension)
                         return false;
 
                     coordinates1d[i] = coordinates[i][dimension];
