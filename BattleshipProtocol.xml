@@ -191,8 +191,27 @@
             </summary>
             <exception cref="T:System.ArgumentOutOfRangeException">If position from <paramref name="coordinate"/> is outside the grid.</exception>
             <exception cref="T:System.InvalidOperationException">If board has already been shot at the given <paramref name="coordinate"/></exception>
+            <exception cref="T:System.InvalidOperationException">If the shot ship is registering an invalid location. See <see cref="M:BattleshipProtocol.Game.Board.TryCalculateShipPosition(BattleshipProtocol.Game.Ship@,System.Collections.Generic.List{BattleshipProtocol.Game.Coordinate},BattleshipProtocol.Game.Coordinate@,BattleshipProtocol.Game.Orientation@)"/>.</exception>
             <param name="coordinate">Position to check.</param>
             <param name="hitShip">The ship that was hit, or null for miss.</param>
+        </member>
+        <member name="M:BattleshipProtocol.Game.Board.GetShotsOnShip(BattleshipProtocol.Game.ShipType@)">
+            <summary>
+            Returns a list of the coordinates where this ship has been shot.
+            </summary>
+            <param name="shipType">The ship to compare.</param>
+        </member>
+        <member name="M:BattleshipProtocol.Game.Board.TryCalculateShipPosition(BattleshipProtocol.Game.Ship@,System.Collections.Generic.List{BattleshipProtocol.Game.Coordinate},BattleshipProtocol.Game.Coordinate@,BattleshipProtocol.Game.Orientation@)">
+            <summary>
+            Validates a remote ship and where it has been shot in an effort to calculate its location.
+            </summary>
+            <param name="ship">The ship to validate.</param>
+            <param name="coordinates">The coordinates of where this ship has been shot.</param>
+            <param name="coordinate">The coordinate of this ship, if found.</param>
+            <param name="orientation">The orientation of this ship, if found.</param>
+            <exception cref="T:System.InvalidOperationException">The shot coordinates are more than the health of the ship.</exception>
+            <exception cref="T:System.InvalidOperationException">The shot coordinates do not fall on a straight line.</exception>
+            <exception cref="T:System.InvalidOperationException">The shot coordinates grasp a grander boundary than possible for the ship.</exception>
         </member>
         <member name="M:BattleshipProtocol.Game.Board.ShootAtInternal(BattleshipProtocol.Game.Coordinate@)">
             <summary>
@@ -257,6 +276,18 @@
             <summary>
             Gets or sets the Y component of this coordinate. Ranges from 0 (north) to 9 (south).
             </summary>
+        </member>
+        <member name="P:BattleshipProtocol.Game.Coordinate.Item(System.Int32)">
+            <summary>
+            Gets or sets the indexed component of this coordinate. 0 for X and 1 for Y.
+            </summary>
+            <param name="index">The index.</param>
+        </member>
+        <member name="P:BattleshipProtocol.Game.Coordinate.Item(BattleshipProtocol.Game.Orientation)">
+            <summary>
+            Gets or sets the component of this coordinate based off orientation. <see cref="F:BattleshipProtocol.Game.Orientation.East"/> for X and <see cref="F:BattleshipProtocol.Game.Orientation.South"/> for Y.
+            </summary>
+            <param name="orientation">The orientation.</param>
         </member>
         <member name="P:BattleshipProtocol.Game.Coordinate.Horizontal">
             <summary>
