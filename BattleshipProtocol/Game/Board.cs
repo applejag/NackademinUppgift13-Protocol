@@ -75,12 +75,18 @@ namespace BattleshipProtocol.Game
             _shipsHit[coordinate.X, coordinate.Y] = ship;
 
             if (!(ship is null))
+            {
+                if (ship.Health == 0)
+                {
+                    OnBoardShot(in coordinate);
+                    throw new InvalidOperationException($"Ship has already been sunk.");
+                }
+
                 ship.Health--;
+            }
 
             OnBoardShot(in coordinate);
 
-            if (ship?.Health == 0)
-                throw new InvalidOperationException($"Ship has already been sunk.");
             return ship;
         }
 
