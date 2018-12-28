@@ -171,7 +171,7 @@ namespace BattleshipProtocol.Game
                 throw new InvalidOperationException($"The shot locations spans a longer distance than the max distance for a {ship.Name}.");
             }
 
-            // Undeterminable
+            // Indeterminable
             if (range != ship.Length)
             {
                 coordinate = default;

@@ -110,7 +110,7 @@ namespace BattleshipProtocol
         /// <exception cref="InvalidOperationException">No FIRE command has been registered.</exception>
         /// <exception cref="InvalidOperationException">A FIRE command is already pending.</exception>
         /// <exception cref="ArgumentException">Coordinate has already been shot at.</exception>
-        public async Task ShootAtAsync(Coordinate coordinate, [CanBeNull] string message)
+        public async Task ShootAtAsync(Coordinate coordinate, [CanBeNull] string message = null)
         {
             if (GameState != GameState.InGame)
                 throw new InvalidOperationException("You can only FIRE when in-game.");
