@@ -174,16 +174,32 @@ namespace BattleshipProtocol.Game.Commands
                             throw new ProtocolException(ResponseCode.SequenceError,
                                 $"Sequence error: Received {(short)ResponseCode.FireYouWin}, but there are more than one ship remaining.");
 
-                        _game.RemotePlayer.Board.RegisterShot(in coordinate, lastShips[0].Type);
+                        Ship ship = lastShips[0];
+
+                        try
+                        {
+                            _game.RemotePlayer.Board.RegisterShot(in coordinate, ship.Type);
+                        }
+                        catch (InvalidOperationException ex)
+                        {
+                            throw new ProtocolException(ResponseCode.SequenceError, $"Sequence error: {ex.Message}");
+                        }
 
                         WaitingForResponseAt = null;
                         _game.IsLocalsTurn = false;
 
-                        OnFireResponse(new FireOutcome(coordinate, lastShips[0]));
+                        OnFireResponse(new FireOutcome(coordinate, ship));
                         break;
                     }
                 case ResponseCode.FireMiss:
-                    _game.RemotePlayer.Board.RegisterShot(in coordinate, null);
+                    try
+                    {
+                        _game.RemotePlayer.Board.RegisterShot(in coordinate, null);
+                    }
+                    catch (InvalidOperationException ex)
+                    {
+                        throw new ProtocolException(ResponseCode.SequenceError, $"Sequence error: {ex.Message}");
+                    }
 
                     WaitingForResponseAt = null;
                     _game.IsLocalsTurn = false;
@@ -193,7 +209,15 @@ namespace BattleshipProtocol.Game.Commands
                 default:
                     {
                         // Response was a hit or sunk
-                        Ship ship = _game.RemotePlayer.Board.RegisterShot(in coordinate, GetShipType(response.Code));
+                        Ship ship;
+                        try
+                        {
+                            ship = _game.RemotePlayer.Board.RegisterShot(in coordinate, GetShipType(response.Code));
+                        }
+                        catch (InvalidOperationException ex)
+                        {
+                            throw new ProtocolException(ResponseCode.SequenceError, $"Sequence error: {ex.Message}");
+                        }
 
                         WaitingForResponseAt = null;
                         _game.IsLocalsTurn = false;

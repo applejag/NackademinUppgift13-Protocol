@@ -1,4 +1,5 @@
 ﻿using System;
+using System.ComponentModel;
 using System.Text.RegularExpressions;
 using JetBrains.Annotations;
 
@@ -27,6 +28,52 @@ namespace BattleshipProtocol.Game
         public int Y {
             get => _y;
             set => _y = Validate(value);
+        }
+
+        /// <summary>
+        /// Gets or sets the indexed component of this coordinate. 0 for X and 1 for Y.
+        /// </summary>
+        /// <param name="index">The index.</param>
+        public int this[int index]
+        {
+            get
+            {
+                if (index > 1 || index < 0)
+                    throw new IndexOutOfRangeException();
+                return index == 0 ? _x : _y;
+            }
+            set
+            {
+                if (index > 1 || index < 0)
+                    throw new IndexOutOfRangeException();
+                if (index == 0)
+                    _x = Validate(value);
+                else
+                    _y = Validate(value);
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the component of this coordinate based off orientation. <see cref="Orientation.East"/> for X and <see cref="Orientation.South"/> for Y.
+        /// </summary>
+        /// <param name="orientation">The orientation.</param>
+        public int this[Orientation orientation]
+        {
+            get
+            {
+                if (!Enum.IsDefined(typeof(Orientation), orientation))
+                    throw new InvalidEnumArgumentException(nameof(orientation), (int) orientation, typeof(Orientation));
+                return orientation == Orientation.East ? _x : _y;
+            }
+            set
+            {
+                if (!Enum.IsDefined(typeof(Orientation), orientation))
+                    throw new InvalidEnumArgumentException(nameof(orientation), (int)orientation, typeof(Orientation));
+                if (orientation == Orientation.East)
+                    _x = Validate(value);
+                else
+                    _y = Validate(value);
+            }
         }
 
         /// <summary>
