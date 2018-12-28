@@ -79,7 +79,7 @@ namespace BattleshipProtocol.Game
                 if (ship.Health == 0)
                 {
                     OnBoardShot(in coordinate);
-                    throw new InvalidOperationException($"Ship has already been sunk.");
+                    throw new InvalidOperationException("Ship has already been sunk.");
                 }
 
                 ship.Health--;
@@ -119,7 +119,7 @@ namespace BattleshipProtocol.Game
         /// Validates a remote ship and where it has been shot in an effort to calculate its location.
         /// </summary>
         /// <param name="ship">The ship to validate.</param>
-        /// <param name="coordinates">The coordinates of where this ship has been shot, assuming sorted 0-9 on x and y.</param>
+        /// <param name="coordinates">The coordinates of where this ship has been shot.</param>
         /// <param name="coordinate">The coordinate of this ship, if found.</param>
         /// <param name="orientation">The orientation of this ship, if found.</param>
         /// <exception cref="InvalidOperationException">The shot coordinates are more than the health of the ship.</exception>
@@ -150,12 +150,13 @@ namespace BattleshipProtocol.Game
             // Determine orientation
             Coordinate first = coordinates[0];
             var coordinates1d = new int[coordinates.Count];
+            int dim;
 
-            if (TestDimension(0))
+            if (TestDimension(dim = 0))
             {
                 orientation = Orientation.East;
             }
-            else if (TestDimension(1))
+            else if (TestDimension(dim = 1))
             {
                 orientation = Orientation.South;
             }
@@ -180,8 +181,12 @@ namespace BattleshipProtocol.Game
                 return false;
             }
 
-            // Gottem, assuming they're sorted.
-            coordinate = first;
+            // Gottem
+            coordinate = new Coordinate
+            {
+                [dim] = min,
+                [1 - dim] = first[1 - dim]
+            };
             return true;
 
             bool TestDimension(in int dimension)
