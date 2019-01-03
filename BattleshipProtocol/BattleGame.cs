@@ -74,6 +74,9 @@ namespace BattleshipProtocol
         /// </summary>
         public event EventHandler LocalsTurnChanged;
 
+        /// <summary>
+        /// The packet connection model. This handles the TCP connection and the registry of commands/responses, as assigned by this <see cref="BattleGame" /> class.
+        /// </summary>
         public PacketConnection PacketConnection { get; }
 
         private BattleGame(TcpClient client, PacketConnection packetConnection, Board localBoard, string playerName, bool isHost)
